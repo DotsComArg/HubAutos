@@ -16,6 +16,15 @@ app.use(urlencoded({ extended: true }));
 
 const port = process.env.PORT || 3000;
 
+// Ruta de prueba para verificar que el servidor esté funcionando
+app.get("/", (req, res) => {
+  res.json({ message: "HubAutos Server está funcionando correctamente" });
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({ status: "OK", message: "Servidor funcionando" });
+});
+
 function mapInputData(inputData) {
   return {
     ...inputData,
@@ -113,6 +122,12 @@ app.post("/api/auto-quote", async (req, res) => {
 });
 
 
-app.listen(port, () => {
-  console.log(`App listening at http://localhost:${port}`);
-});
+// Para desarrollo local
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`App listening at http://localhost:${port}`);
+  });
+}
+
+// Para Vercel
+module.exports = app;
