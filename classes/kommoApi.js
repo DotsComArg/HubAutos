@@ -96,6 +96,11 @@ class KommoApiClient {
       ),
     };
   }
+
+  async addNoteToLead(leadId, noteData) {
+    const url = `https://${this.variables.subdomain}/api/v4/leads/${leadId}/notes`;
+    return await this.postRequest(url, noteData);
+  }
 }
 
 module.exports = { KommoApiClient };

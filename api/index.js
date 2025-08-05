@@ -5,6 +5,8 @@ const { KommoApiClient } = require("../classes/kommoApi");
 const { LeadJsonCreator } = require("../classes/kommoJson");
 const addCarRow = require('../helpers/addCarRow');
 const { formatPhoneToArgentina } = require("../utils/phone");
+const { processQuote } = require('../helpers/processQuote');
+const urlShortener = require('../utils/urlShortener');
 
 const { json, urlencoded } = express;
 dotenv.config();
@@ -78,7 +80,7 @@ async function processKommoLead(data) {
       const dataComplexResponse = await kommoApiClientWordpress.createLeadComplex(
         dataComplex
       );
-      let leadId = dataComplexResponse[0].id;
+      idLead = dataComplexResponse[0].id;
     } else {
       if (isLead.leads.length > 0) {
         console.log("Actualizar lead existente");
@@ -94,6 +96,39 @@ async function processKommoLead(data) {
         await kommoApiClientWordpress.linkLead(idLead, isLead.idContact);
       }
     }
+
+    // Procesar cotización automática si tenemos un lead ID
+    if (idLead) {
+      try {
+        console.log("Iniciando cotización automática para lead:", idLead);
+        const quoteResult = await processQuote(mappedData);
+        
+        if (quoteResult.success) {
+          // Agregar nota con cotizaciones
+          await kommoApiClientWordpress.addNoteToLead(idLead, quoteResult.data.note);
+          
+          // Actualizar campos personalizados
+          await kommoApiClientWordpress.updateLead(idLead, quoteResult.data.leadUpdate);
+          
+          console.log("Cotización procesada exitosamente");
+        } else {
+          console.log("Error en cotización:", quoteResult.error);
+          // Agregar nota de error
+          const errorNote = [{
+            note_type: "common",
+            params: {
+              text: `[Error en Cotización]\n\n❌ ${quoteResult.error}\n\nNo se pudieron obtener cotizaciones automáticas.`
+            }
+          }];
+          await kommoApiClientWordpress.addNoteToLead(idLead, errorNote);
+        }
+      } catch (quoteError) {
+        console.error("Error al procesar cotización:", quoteError);
+        // No fallamos todo el proceso si la cotización falla
+      }
+    }
+
+    return idLead;
   } catch (error) {
     console.error("Error en processKommoLead:", error);
     throw error;
@@ -109,15 +144,32 @@ app.post("/api/auto-quote", async (req, res) => {
     }
     
     await addCarRow(req.body);
-    await processKommoLead(req.body);
+    const leadId = await processKommoLead(req.body);
     
     res.json({
       message: "Datos recibidos correctamente",
       data: req.body,
+      leadId: leadId
     });
   } catch (error) {
     console.error("Error al procesar la solicitud:", error);
     res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// Endpoint para acortar URLs
+app.get("/sh/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const originalUrl = await urlShortener.getOriginalUrl(id);
+    if (originalUrl) {
+      res.redirect(originalUrl);
+    } else {
+      res.status(404).json({ error: "URL no encontrada" });
+    }
+  } catch (error) {
+    console.error("Error al recuperar la URL original:", error);
+    res.status(500).json({ error: "Error al recuperar la URL original" });
   }
 });
 
