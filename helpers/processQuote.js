@@ -19,10 +19,20 @@ async function getDolarBlue() {
 }
 
 /**
- * Formatea un número en pesos argentinos con separador de miles
+ * Formatea un número en pesos argentinos con puntos como separador de miles
  */
-const formatPesos = (n) =>
-  new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(n);
+const formatPesos = (n) => {
+  if (!n || n === 0) return '';
+  return parseInt(n).toLocaleString('es-AR');
+};
+
+/**
+ * Formatea un precio con símbolo de peso y puntos como separador
+ */
+const formatPrice = (n) => {
+  if (!n || n === 0) return '';
+  return `$${parseInt(n).toLocaleString('es-AR')}`;
+};
 
 /**
  * Genera una lista formateada de autos con cotizaciones
@@ -98,15 +108,15 @@ async function generateSimpleList(items) {
     const parts = [
       a.year,
       a.title,
-      `$${formatPesos(a.precioPesos)}`,
+      formatPrice(a.precioPesos),
       a.currency === "US$" ? `Blue: ${dolarBlue}` : "",
       `${URL_BASE}/sh/${a.tiny}`
     ];
     return parts.filter(Boolean).join(" | ");
   });
 
-  lines.push(`Cotización sugerida: $${formatPesos(cotizacionSugerida)}`);
-  lines.push(`Rango: $${formatPesos(valorMinimo)} – $${formatPesos(valorMaximo)}`);
+  lines.push(`Cotización sugerida: ${formatPrice(cotizacionSugerida)}`);
+  lines.push(`Rango: ${formatPrice(valorMinimo)} – ${formatPrice(valorMaximo)}`);
 
   return {
     cotizacionSugerida,
@@ -165,20 +175,20 @@ async function processQuote(data) {
       custom_fields_values: [
         {
           field_id: 1821619, // Precio sugerido
-          values: [{ value: tablePrices.cotizacionSugerida.toString() }]
+          values: [{ value: formatPrice(tablePrices.cotizacionSugerida) }]
         },
         {
           field_id: 1821933, // Precio mínimo
-          values: [{ value: tablePrices.valorMinimo.toString() }]
+          values: [{ value: formatPrice(tablePrices.valorMinimo) }]
         },
         {
           field_id: 1821931, // Precio máximo
-          values: [{ value: tablePrices.valorMaximo.toString() }]
+          values: [{ value: formatPrice(tablePrices.valorMaximo) }]
         },
         {
           field_id: 1821941, // Rango de cotización
           values: [{ 
-            value: `Valor sugerido desde: ${tablePrices.valorMinimo.toString()} hasta: ${tablePrices.valorMaximo.toString()}` 
+            value: `Valor sugerido desde: ${formatPrice(tablePrices.valorMinimo)} hasta: ${formatPrice(tablePrices.valorMaximo)}` 
           }]
         }
       ]
@@ -214,5 +224,6 @@ module.exports = {
   processQuote,
   generateSimpleList,
   getDolarBlue,
-  formatPesos
+  formatPesos,
+  formatPrice
 }; 

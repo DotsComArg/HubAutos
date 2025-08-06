@@ -1,13 +1,18 @@
+const { formatKilometers } = require('../utils/formatNumbers');
+
 class LeadJsonCreator {
   constructor() {}
 
   createCustomFields(data) {
+    // Formatear kilometraje con puntos como separador de miles
+    const kilometrajeFormateado = formatKilometers(data.kilometraje || data.km);
+    
     return [
       { field_id: 1808372, values: [{ value: data.ano?.toString() || "" }] },
       { field_id: 1795890, values: [{ value: data.marca || "" }] },
       { field_id: 1795892, values: [{ value: data.modelo || "" }] },
       { field_id: 1807454, values: [{ value: data.version || "" }] },
-      { field_id: 1807442, values: [{ value: data.kilometraje?.toString() || "" }] },
+      { field_id: 1807442, values: [{ value: kilometrajeFormateado }] },
       { field_id: 1796372, values: [{ value: data.cp?.toString() || data.codigo_postal?.toString() || "" }] }
     ];
   }
