@@ -53,27 +53,68 @@ async function processKommoLead(data) {
     );
     let isLead = null;
     let idLead = null;
+    let existingLeadId = null;
+    let existingContactId = null;
 
+    // Primero buscar si ya existe un lead con ese teléfono
     if (data.phone) {
       const lastTenDigits = data.phone.slice(-10);
       console.log(
-        `Buscar por los últimos 10 dígitos del teléfono: ${lastTenDigits}`
+        `Buscando leads existentes por teléfono: ${lastTenDigits}`
       );
-      isLead = await kommoApiClientWordpress.getContactByPhone(lastTenDigits);
+      
+      const existingLead = await kommoApiClientWordpress.searchLeadsByPhone(lastTenDigits);
+      if (existingLead) {
+        existingLeadId = existingLead.leadId;
+        existingContactId = existingLead.contactId;
+        console.log(`Lead existente encontrado con ID: ${existingLeadId} y contacto: ${existingContactId}`);
+      }
     }
 
-    if (!isLead) {
-      if (!data.email) {
-        console.log("No hay email, no se puede procesar el lead.");
-        return;
+    // Si no encontramos lead por teléfono, buscar por contacto
+    if (!existingLeadId) {
+      if (data.phone) {
+        const lastTenDigits = data.phone.slice(-10);
+        console.log(
+          `Buscando contacto por teléfono: ${lastTenDigits}`
+        );
+        isLead = await kommoApiClientWordpress.getContactByPhone(lastTenDigits);
+        
+        // Si encontramos un contacto, verificar si ya tiene un lead activo
+        if (isLead && isLead.leads && isLead.leads.length > 0) {
+          existingLeadId = isLead.leads[0];
+          existingContactId = isLead.idContact;
+          console.log(`Lead existente encontrado por contacto con ID: ${existingLeadId}`);
+        }
       }
-      console.log("Buscar por email");
-      isLead = await kommoApiClientWordpress.getContactByPhone(data.email);
+
+      if (!isLead && !existingLeadId) {
+        if (!data.email) {
+          console.log("No hay email, no se puede procesar el lead.");
+          return;
+        }
+        console.log("Buscando por email");
+        isLead = await kommoApiClientWordpress.getContactByPhone(data.email);
+        
+        // Verificar también leads por email
+        if (isLead && isLead.leads && isLead.leads.length > 0) {
+          existingLeadId = isLead.leads[0];
+          existingContactId = isLead.idContact;
+          console.log(`Lead existente encontrado por email con ID: ${existingLeadId}`);
+        }
+      }
     }
     
     const mappedData = mapInputData(data);
 
-    if (!isLead) {
+    // Si ya tenemos un lead existente, actualizarlo en lugar de crear uno nuevo
+    if (existingLeadId) {
+      console.log("Actualizando lead existente con nuevos datos del auto");
+      const dataUpdated = new LeadJsonCreator().leadJson(mappedData);
+      console.log("Data updated: ", JSON.stringify(dataUpdated));
+      await kommoApiClientWordpress.updateLead(existingLeadId, dataUpdated[0]);
+      idLead = existingLeadId;
+    } else if (!isLead) {
       console.log("Crear lead con contacto");
       const dataComplex = new LeadJsonCreator().complexJson(mappedData);
       console.log("Data complex: ", JSON.stringify(dataComplex));

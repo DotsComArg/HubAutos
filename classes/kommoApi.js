@@ -97,6 +97,100 @@ class KommoApiClient {
     };
   }
 
+  async getLeadsByPhone(phone) {
+    try {
+      // Buscar leads directamente por teléfono
+      const url = `https://${this.variables.subdomain}/api/v4/leads?with=contacts&query=${phone}`;
+      const response = await this.getRequest(url);
+      
+      if (response.status === 204 || !response._embedded || !response._embedded.leads) {
+        return null;
+      }
+      
+      // Filtrar leads que tengan el teléfono exacto
+      const leadsWithPhone = response._embedded.leads.filter(lead => {
+        if (lead._embedded && lead._embedded.contacts) {
+          return lead._embedded.contacts.some(contact => {
+            if (contact.custom_fields_values) {
+              return contact.custom_fields_values.some(field => {
+                // Buscar en cualquier campo que contenga "phone", "teléfono", "celular", etc.
+                const fieldName = field.field_name ? field.field_name.toLowerCase() : '';
+                const isPhoneField = fieldName.includes('phone') || 
+                                   fieldName.includes('teléfono') || 
+                                   fieldName.includes('celular') || 
+                                   fieldName.includes('whatsapp');
+                
+                if (isPhoneField || field.field_code === 'PHONE') {
+                  return field.values.some(value => 
+                    value.value && value.value.includes(phone.slice(-10))
+                  );
+                }
+                return false;
+              });
+            }
+            return false;
+          });
+        }
+        return false;
+      });
+      
+      if (leadsWithPhone.length > 0) {
+        return {
+          leadId: leadsWithPhone[0].id,
+          contactId: leadsWithPhone[0]._embedded.contacts[0].id,
+          leadData: leadsWithPhone[0]
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Error buscando leads por teléfono:", error);
+      return null;
+    }
+  }
+
+  async searchLeadsByPhone(phone) {
+    try {
+      // Usar la API de búsqueda de Kommo para encontrar leads por teléfono
+      const searchQuery = encodeURIComponent(phone);
+      const url = `https://${this.variables.subdomain}/api/v4/leads?with=contacts&query=${searchQuery}`;
+      const response = await this.getRequest(url);
+      
+      if (response.status === 204 || !response._embedded || !response._embedded.leads) {
+        return null;
+      }
+      
+      // Buscar en los leads retornados por la búsqueda
+      for (const lead of response._embedded.leads) {
+        if (lead._embedded && lead._embedded.contacts) {
+          for (const contact of lead._embedded.contacts) {
+            if (contact.custom_fields_values) {
+              for (const field of contact.custom_fields_values) {
+                // Verificar si es un campo de teléfono
+                if (field.values && field.values.length > 0) {
+                  for (const value of field.values) {
+                    if (value.value && value.value.includes(phone.slice(-10))) {
+                      return {
+                        leadId: lead.id,
+                        contactId: contact.id,
+                        leadData: lead
+                      };
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Error en búsqueda de leads por teléfono:", error);
+      return null;
+    }
+  }
+
   async addNoteToLead(leadId, noteData) {
     const url = `https://${this.variables.subdomain}/api/v4/leads/${leadId}/notes`;
     return await this.postRequest(url, noteData);
