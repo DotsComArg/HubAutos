@@ -47,101 +47,98 @@ async function processKommoLead(data) {
       throw new Error("Se requiere teléfono o email para procesar el lead");
     }
 
+    // Esperar 20 segundos para que se cree el contacto en Kommo
+    console.log("⏳ Esperando 20 segundos para que se cree el contacto en Kommo...");
+    await new Promise(resolve => setTimeout(resolve, 20000));
+    console.log("✅ Tiempo de espera completado, procediendo con la búsqueda de contactos...");
+
     const kommoApiClientWordpress = new KommoApiClient(
       process.env.SUBDOMAIN_KOMMO,
       process.env.TOKEN_KOMMO_FORM
     );
-    let isLead = null;
-    let idLead = null;
+    
+    let existingContact = null;
     let existingLeadId = null;
-    let existingContactId = null;
+    let idLead = null;
 
-    // Primero buscar si ya existe un lead con ese teléfono
+    // Buscar contacto existente por teléfono (prioridad)
     if (data.phone) {
       const lastTenDigits = data.phone.slice(-10);
-      console.log(
-        `Buscando leads existentes por teléfono: ${lastTenDigits}`
-      );
+      console.log(`🔍 Buscando contacto existente por teléfono: ${lastTenDigits}`);
       
-      const existingLead = await kommoApiClientWordpress.searchLeadsByPhone(lastTenDigits);
-      if (existingLead) {
-        existingLeadId = existingLead.leadId;
-        existingContactId = existingLead.contactId;
-        console.log(`Lead existente encontrado con ID: ${existingLeadId} y contacto: ${existingContactId}`);
+      try {
+        existingContact = await kommoApiClientWordpress.getContactByPhone(lastTenDigits);
+        if (existingContact) {
+          console.log(`✅ Contacto existente encontrado con ID: ${existingContact.idContact}`);
+          
+          // Verificar si ya tiene leads activos
+          if (existingContact.leads && existingContact.leads.length > 0) {
+            existingLeadId = existingContact.leads[0];
+            console.log(`📋 Lead existente encontrado con ID: ${existingLeadId}`);
+          }
+        } else {
+          console.log(`❌ No se encontró contacto con el teléfono: ${lastTenDigits}`);
+        }
+      } catch (error) {
+        console.log(`⚠️ Error buscando por teléfono: ${error.message}`);
       }
     }
 
-    // Si no encontramos lead por teléfono, buscar por contacto
-    if (!existingLeadId) {
-      if (data.phone) {
-        const lastTenDigits = data.phone.slice(-10);
-        console.log(
-          `Buscando contacto por teléfono: ${lastTenDigits}`
-        );
-        isLead = await kommoApiClientWordpress.getContactByPhone(lastTenDigits);
-        
-        // Si encontramos un contacto, verificar si ya tiene un lead activo
-        if (isLead && isLead.leads && isLead.leads.length > 0) {
-          existingLeadId = isLead.leads[0];
-          existingContactId = isLead.idContact;
-          console.log(`Lead existente encontrado por contacto con ID: ${existingLeadId}`);
+    // Si no encontramos contacto por teléfono, buscar por email
+    if (!existingContact && data.email) {
+      console.log(`🔍 Buscando contacto existente por email: ${data.email}`);
+      try {
+        existingContact = await kommoApiClientWordpress.getContactByPhone(data.email);
+        if (existingContact) {
+          console.log(`✅ Contacto existente encontrado por email con ID: ${existingContact.idContact}`);
+          
+          // Verificar si ya tiene leads activos
+          if (existingContact.leads && existingContact.leads.length > 0) {
+            existingLeadId = existingContact.leads[0];
+            console.log(`📋 Lead existente encontrado con ID: ${existingLeadId}`);
+          }
+        } else {
+          console.log(`❌ No se encontró contacto con el email: ${data.email}`);
         }
-      }
-
-      if (!isLead && !existingLeadId) {
-        if (!data.email) {
-          console.log("No hay email, no se puede procesar el lead.");
-          return;
-        }
-        console.log("Buscando por email");
-        isLead = await kommoApiClientWordpress.getContactByPhone(data.email);
-        
-        // Verificar también leads por email
-        if (isLead && isLead.leads && isLead.leads.length > 0) {
-          existingLeadId = isLead.leads[0];
-          existingContactId = isLead.idContact;
-          console.log(`Lead existente encontrado por email con ID: ${existingLeadId}`);
-        }
+      } catch (error) {
+        console.log(`⚠️ Error buscando por email: ${error.message}`);
       }
     }
-    
+
     const mappedData = mapInputData(data);
 
-    // Si ya tenemos un lead existente, actualizarlo en lugar de crear uno nuevo
     if (existingLeadId) {
-      console.log("Actualizando lead existente con nuevos datos del auto");
+      // Actualizar lead existente con nuevos datos
+      console.log("🔄 Actualizando lead existente con nuevos datos del auto...");
       const dataUpdated = new LeadJsonCreator().leadJson(mappedData);
-      console.log("Data updated: ", JSON.stringify(dataUpdated));
+      console.log("📝 Datos para actualizar:", JSON.stringify(dataUpdated));
       await kommoApiClientWordpress.updateLead(existingLeadId, dataUpdated[0]);
       idLead = existingLeadId;
-    } else if (!isLead) {
-      console.log("Crear lead con contacto");
-      const dataComplex = new LeadJsonCreator().complexJson(mappedData);
-      console.log("Data complex: ", JSON.stringify(dataComplex));
-      const dataComplexResponse = await kommoApiClientWordpress.createLeadComplex(
-        dataComplex
-      );
-      idLead = dataComplexResponse[0].id;
+      console.log(`✅ Lead ${idLead} actualizado exitosamente`);
+      
+    } else if (existingContact) {
+      // Contacto existe pero no tiene leads, crear nuevo lead y vincularlo
+      console.log("📋 Contacto existente sin leads, creando nuevo lead y vinculándolo...");
+      const dataNewLead = new LeadJsonCreator().leadJson(mappedData);
+      console.log("📝 Datos del nuevo lead:", JSON.stringify(dataNewLead));
+      idLead = await kommoApiClientWordpress.createLeadSimple(dataNewLead);
+      await kommoApiClientWordpress.linkLead(idLead, existingContact.idContact);
+      console.log(`✅ Nuevo lead ${idLead} creado y vinculado al contacto ${existingContact.idContact}`);
+      
     } else {
-      if (isLead.leads.length > 0) {
-        console.log("Actualizar lead existente");
-        idLead = isLead.leads[0];
-        const dataUpdated = new LeadJsonCreator().leadJson(mappedData);
-        console.log("Data updated: ", JSON.stringify(dataUpdated));
-        await kommoApiClientWordpress.updateLead(idLead, dataUpdated[0]);
-      } else {
-        console.log("Contacto existente, vincular lead nuevo.");
-        const dataNewLead = new LeadJsonCreator().leadJson(mappedData);
-        console.log("Data new lead: ", JSON.stringify(dataNewLead));
-        idLead = await kommoApiClientWordpress.createLeadSimple(dataNewLead);
-        await kommoApiClientWordpress.linkLead(idLead, isLead.idContact);
-      }
+      // No hay contacto ni lead, crear todo desde cero
+      console.log("🆕 No hay contacto existente, creando contacto y lead desde cero...");
+      const dataComplex = new LeadJsonCreator().complexJson(mappedData);
+      console.log("📝 Datos complejos:", JSON.stringify(dataComplex));
+      const dataComplexResponse = await kommoApiClientWordpress.createLeadComplex(dataComplex);
+      idLead = dataComplexResponse[0].id;
+      console.log(`✅ Contacto y lead ${idLead} creados desde cero`);
     }
 
     // Procesar cotización automática si tenemos un lead ID
     if (idLead) {
       try {
-        console.log("Iniciando cotización automática para lead:", idLead);
+        console.log("💰 Iniciando cotización automática para lead:", idLead);
         const quoteResult = await processQuote(mappedData);
         
         if (quoteResult.success) {
@@ -151,9 +148,9 @@ async function processKommoLead(data) {
           // Actualizar campos personalizados
           await kommoApiClientWordpress.updateLead(idLead, quoteResult.data.leadUpdate);
           
-          console.log("Cotización procesada exitosamente");
+          console.log("✅ Cotización procesada exitosamente");
         } else {
-          console.log("Error en cotización:", quoteResult.error);
+          console.log("❌ Error en cotización:", quoteResult.error);
           // Agregar nota de error
           const errorNote = [{
             note_type: "common",
@@ -164,14 +161,14 @@ async function processKommoLead(data) {
           await kommoApiClientWordpress.addNoteToLead(idLead, errorNote);
         }
       } catch (quoteError) {
-        console.error("Error al procesar cotización:", quoteError);
+        console.error("❌ Error al procesar cotización:", quoteError);
         // No fallamos todo el proceso si la cotización falla
       }
     }
 
     return idLead;
   } catch (error) {
-    console.error("Error en processKommoLead:", error);
+    console.error("❌ Error en processKommoLead:", error);
     throw error;
   }
 }
