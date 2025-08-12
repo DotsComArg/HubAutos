@@ -61,26 +61,62 @@ async function processKommoLead(data) {
     let existingLeadId = null;
     let idLead = null;
 
-    // Buscar contacto existente por teléfono (prioridad)
-    if (data.phone) {
-      const lastTenDigits = data.phone.slice(-10);
-      console.log(`🔍 Buscando contacto existente por teléfono: ${lastTenDigits}`);
+    // Función para consolidar contactos duplicados
+    async function consolidateDuplicateContacts(phone) {
+      const lastTenDigits = phone.slice(-10);
+      console.log(`🔍 Buscando y consolidando contactos duplicados con número: ${lastTenDigits}`);
       
       try {
-        existingContact = await kommoApiClientWordpress.getContactByPhone(lastTenDigits);
-        if (existingContact) {
-          console.log(`✅ Contacto existente encontrado con ID: ${existingContact.idContact}`);
+        // Buscar leads que tengan este teléfono
+        const searchResult = await kommoApiClientWordpress.searchLeadsByPhone(lastTenDigits);
+        if (searchResult) {
+          console.log(`✅ Encontrado lead existente con ID: ${searchResult.leadId} y contacto: ${searchResult.contactId}`);
+          return {
+            contactId: searchResult.contactId,
+            leadId: searchResult.leadId,
+            found: true
+          };
+        }
+        
+        // Si no hay leads, buscar contactos directamente
+        const contactResult = await kommoApiClientWordpress.getContactByPhone(lastTenDigits);
+        if (contactResult) {
+          console.log(`✅ Encontrado contacto existente con ID: ${contactResult.idContact}`);
           
           // Verificar si ya tiene leads activos
-          if (existingContact.leads && existingContact.leads.length > 0) {
-            existingLeadId = existingContact.leads[0];
-            console.log(`📋 Lead existente encontrado con ID: ${existingLeadId}`);
+          if (contactResult.leads && contactResult.leads.length > 0) {
+            const leadId = contactResult.leads[0];
+            console.log(`📋 Lead existente encontrado con ID: ${leadId}`);
+            return {
+              contactId: contactResult.idContact,
+              leadId: leadId,
+              found: true
+            };
+          } else {
+            return {
+              contactId: contactResult.idContact,
+              leadId: null,
+              found: true
+            };
           }
-        } else {
-          console.log(`❌ No se encontró contacto con el teléfono: ${lastTenDigits}`);
         }
+        
+        return { found: false };
       } catch (error) {
-        console.log(`⚠️ Error buscando por teléfono: ${error.message}`);
+        console.log(`⚠️ Error consolidando contactos: ${error.message}`);
+        return { found: false, error: error.message };
+      }
+    }
+
+    // Buscar y consolidar contactos duplicados por teléfono
+    if (data.phone) {
+      const consolidationResult = await consolidateDuplicateContacts(data.phone);
+      if (consolidationResult.found) {
+        existingContact = { idContact: consolidationResult.contactId };
+        existingLeadId = consolidationResult.leadId;
+        console.log(`✅ Contacto consolidado - ID: ${consolidationResult.contactId}, Lead: ${consolidationResult.leadId || 'No tiene'}`);
+      } else {
+        console.log(`❌ No se encontraron contactos con el teléfono: ${data.phone}`);
       }
     }
 
@@ -88,15 +124,16 @@ async function processKommoLead(data) {
     if (!existingContact && data.email) {
       console.log(`🔍 Buscando contacto existente por email: ${data.email}`);
       try {
-        existingContact = await kommoApiClientWordpress.getContactByPhone(data.email);
-        if (existingContact) {
-          console.log(`✅ Contacto existente encontrado por email con ID: ${existingContact.idContact}`);
+        const emailContact = await kommoApiClientWordpress.getContactByPhone(data.email);
+        if (emailContact) {
+          console.log(`✅ Contacto existente encontrado por email con ID: ${emailContact.idContact}`);
           
           // Verificar si ya tiene leads activos
-          if (existingContact.leads && existingContact.leads.length > 0) {
-            existingLeadId = existingContact.leads[0];
+          if (emailContact.leads && emailContact.leads.length > 0) {
+            existingLeadId = emailContact.leads[0];
             console.log(`📋 Lead existente encontrado con ID: ${existingLeadId}`);
           }
+          existingContact = { idContact: emailContact.idContact };
         } else {
           console.log(`❌ No se encontró contacto con el email: ${data.email}`);
         }
