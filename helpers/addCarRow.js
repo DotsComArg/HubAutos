@@ -1,13 +1,22 @@
-const GoogleSheets = require('../classes/googleSheets');
+const GoogleSheetsService = require('../classes/googleSheetsService');
 
-const sheets = new GoogleSheets({
-  clientId:        process.env.GOOGLE_CLIENT_ID,
-  clientSecret:    process.env.GOOGLE_CLIENT_SECRET,
-  refreshToken:    process.env.GOOGLE_REFRESH_TOKEN,
-  spreadsheetId:   process.env.GOOGLE_SPREADSHEET_ID,     
+// ID de la hoja de cálculo
+const SPREADSHEET_ID = '1iWAz3-zS7em3yrM9G5QqMqW-xnCf9PdLpPbJ6SimFi8';
+
+// El Service Account se configura a través de variables de entorno
+const sheets = new GoogleSheetsService({
+  serviceAccountKey: process.env.GOOGLE_SERVICE_ACCOUNT_KEY ? 
+    JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY) : 
+    null,
+  spreadsheetId: SPREADSHEET_ID
 });
 
 async function addCarRow(data) {
+  // Verificar que las credenciales estén configuradas
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY no está configurada. Configúrala en Vercel.');
+  }
+
   const row = [
     data.year,
     data.brand,
