@@ -103,7 +103,7 @@ module.exports = async (data) => {
     
     // Esperar a que la página cargue completamente
     console.log('Esperando que la página cargue...');
-    await page.waitForTimeout(5000);
+    await new Promise(resolve => setTimeout(resolve, 5000));
     
     // Verificar si hay contenido en la página
     const pageContent = await page.content();
