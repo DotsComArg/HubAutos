@@ -4,19 +4,7 @@ const { KommoApiClient } = require('../classes/kommoApi');
 
 const URL_BASE = "https://hub-autos-dotscoms-projects.vercel.app";
 
-/**
- * Obtiene la cotización del dólar blue
- */
-async function getDolarBlue() {
-  try {
-    const response = await fetch("https://api.bluelytics.com.ar/v2/latest");
-    const data = await response.json();
-    return data.blue.value_sell;
-  } catch (error) {
-    console.error("Error al obtener el dolar blue:", error);
-    return 1000; // Valor por defecto si falla
-  }
-}
+
 
 /**
  * Formatea un número en pesos argentinos con puntos como separador de miles
@@ -54,7 +42,7 @@ async function generateSimpleList(items) {
     throw new Error("No se pudo obtener la tasa de Dólar Blue");
   }
 
-  // 3. Mapear cada ítem y calcular precio en pesos + acortar URL
+  // 3. Mapear cada ítem y acortar URL (mantener precios originales)
   const detalles = await Promise.all(
     items.map(async item => {
       const { price, currency, title, link, image, year, km, location, validated } = item;
@@ -62,17 +50,14 @@ async function generateSimpleList(items) {
         throw new TypeError(`price inválido en "${title}"`);
       }
       const tiny = await urlShortener.shortenUrl(link);
-      const precioPesos = currency === "US$"
-        ? Math.round(price * dolarBlue)
-        : price;
 
-      return { ...item, precioPesos, tiny };
+      return { ...item, tiny };
     })
   );
 
   // 4. Función interna para seleccionar hasta 3 autos más baratos
   function selectValidCheapest(arr) {
-    const sorted = [...arr].sort((a, b) => a.precioPesos - b.precioPesos);
+    const sorted = [...arr].sort((a, b) => a.price - b.price);
 
     if (sorted.length <= 3) {
       return sorted;
@@ -81,9 +66,9 @@ async function generateSimpleList(items) {
     // Ventana deslizante de tamaño 3
     for (let i = 0; i <= sorted.length - 3; i++) {
       const trio = sorted.slice(i, i + 3);
-      const base = trio[0].precioPesos;
+      const base = trio[0].price;
       const gap = trio.slice(1).some(auto =>
-        (auto.precioPesos - base) / base >= 0.30
+        (auto.price - base) / base >= 0.30
       );
       if (!gap) {
         return trio;
@@ -97,7 +82,7 @@ async function generateSimpleList(items) {
   const seleccionados = selectValidCheapest(detalles);
 
   // 5. Sumatorio y cálculos de promedio y rangos basados en seleccionados
-  const valorSumado = seleccionados.reduce((sum, a) => sum + a.precioPesos, 0);
+  const valorSumado = seleccionados.reduce((sum, a) => sum + a.price, 0);
   const promedio = valorSumado / seleccionados.length;
   const cotizacionSugerida = promedio;
   const valorMaximo = Math.round(promedio * 0.88);
@@ -108,21 +93,29 @@ async function generateSimpleList(items) {
     const parts = [
       a.year,
       a.title,
-      formatPrice(a.precioPesos),
-      a.currency === "US$" ? `Blue: ${dolarBlue}` : "",
+      a.currency === "US$" ? `US$${a.price.toLocaleString('en-US')}` : `$${a.price.toLocaleString('es-AR')}`,
       `${URL_BASE}/sh/${a.tiny}`
     ];
     return parts.filter(Boolean).join(" | ");
   });
 
-  lines.push(`Cotización sugerida: ${formatPrice(cotizacionSugerida)}`);
-  lines.push(`Rango: ${formatPrice(valorMinimo)} – ${formatPrice(valorMaximo)}`);
+  // Determinar moneda predominante para la cotización sugerida
+  const monedaPredominante = seleccionados.filter(a => a.currency === "US$").length > seleccionados.filter(a => a.currency === "$").length ? "US$" : "$";
+  
+  if (monedaPredominante === "US$") {
+    lines.push(`Cotización sugerida: US$${cotizacionSugerida.toLocaleString('en-US')}`);
+    lines.push(`Rango: US$${valorMinimo.toLocaleString('en-US')} – US$${valorMaximo.toLocaleString('en-US')}`);
+  } else {
+    lines.push(`Cotización sugerida: $${cotizacionSugerida.toLocaleString('es-AR')}`);
+    lines.push(`Rango: $${valorMinimo.toLocaleString('es-AR')} – $${valorMaximo.toLocaleString('es-AR')}`);
+  }
 
   return {
     cotizacionSugerida,
     listFormatted: lines.join("\n"),
     valorMaximo,
-    valorMinimo
+    valorMinimo,
+    monedaPredominante
   };
 }
 
@@ -171,24 +164,33 @@ async function processQuote(data) {
     const tablePrices = await generateSimpleList(cheapestCarData);
 
     // Preparar datos para actualizar el lead
+    const monedaPredominante = tablePrices.monedaPredominante || "$";
+    const formatearPrecio = (valor) => {
+      if (monedaPredominante === "US$") {
+        return `US$${valor.toLocaleString('en-US')}`;
+      } else {
+        return `$${valor.toLocaleString('es-AR')}`;
+      }
+    };
+
     const jsonlead = {
       custom_fields_values: [
         {
           field_id: 1821619, // Precio sugerido
-          values: [{ value: formatPrice(tablePrices.cotizacionSugerida) }]
+          values: [{ value: formatearPrecio(tablePrices.cotizacionSugerida) }]
         },
         {
           field_id: 1821933, // Precio mínimo
-          values: [{ value: formatPrice(tablePrices.valorMinimo) }]
+          values: [{ value: formatearPrecio(tablePrices.valorMinimo) }]
         },
         {
           field_id: 1821931, // Precio máximo
-          values: [{ value: formatPrice(tablePrices.valorMaximo) }]
+          values: [{ value: formatearPrecio(tablePrices.valorMaximo) }]
         },
         {
           field_id: 1821941, // Rango de cotización
           values: [{ 
-            value: `Valor sugerido desde: ${formatPrice(tablePrices.valorMinimo)} hasta: ${formatPrice(tablePrices.valorMaximo)}` 
+            value: `Valor sugerido desde: ${formatearPrecio(tablePrices.valorMinimo)} hasta: ${formatearPrecio(tablePrices.valorMaximo)}` 
           }]
         }
       ]
@@ -223,7 +225,6 @@ async function processQuote(data) {
 module.exports = {
   processQuote,
   generateSimpleList,
-  getDolarBlue,
   formatPesos,
   formatPrice
 }; 
