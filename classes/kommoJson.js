@@ -1,7 +1,10 @@
 const { formatKilometers } = require('../utils/formatNumbers');
 
 class LeadJsonCreator {
-  constructor() {}
+  constructor() {
+    // Usar la variable de entorno del pipeline de testing
+    this.pipelineId = process.env.PIPELINE_ID || 11774380;
+  }
 
   createCustomFields(data) {
     // Formatear kilometraje con puntos como separador de miles
@@ -29,8 +32,8 @@ class LeadJsonCreator {
     
     return [
       {
-        pipeline_id: 7902116,
-        status_id: 85037464,
+        pipeline_id: this.pipelineId,
+        status_id: 90598860, // ENTRY NO INICIÓ - Pipeline de testing
         custom_fields_values: filteredCustomFields,
         created_at: Math.floor(Date.now() / 1000),
       },
@@ -50,8 +53,8 @@ class LeadJsonCreator {
     
     return [
       {
-        pipeline_id: 7902116,
-        status_id: 83702104,
+        pipeline_id: this.pipelineId,
+        status_id: 90598860, // ENTRY NO INICIÓ - Pipeline de testing
         custom_fields_values: filteredCustomFields,
         _embedded: {
           contacts: [

@@ -1,0 +1,12 @@
+{
+  "marca": "Volkswagen",
+  "modelo": "Gol",
+  "version": "Trend",
+  "ano": "2018",
+  "kilometraje": "65000",
+  "codigo_postal": "1001",
+  "nombre_completo": "Juan Pérez Test",
+  "telefono": "3794556599",
+  "email": "juan.test@email.com",
+  "dni": "12345678"
+}
