@@ -395,9 +395,11 @@ async function fetchWithCache(endpoint) {
     }
   } catch (error) {
     console.error(`❌ Error en API call a ${endpoint}:`, error);
-    throw error;
+    throw error; // Re-lanzar el error para manejarlo en las funciones de carga
   }
 }
+
+
 
 // Función para poblar un select
 function populateSelect(selectElement, data, placeholder, disabled = false) {
@@ -511,19 +513,10 @@ async function loadYears() {
     showLoading(document.getElementById('year'), 'Cargando años...');
     const years = await fetchWithCache('/years');
     populateSelect(document.getElementById('year'), years, 'Seleccioná año');
-    
     console.log('✅ Años cargados:', years.length);
   } catch (error) {
     showError(document.getElementById('year'), 'Error cargando años');
     console.error('Error cargando años:', error);
-    
-    // Fallback: años hardcodeados
-    const fallbackYears = [];
-    for (let year = 2025; year >= 2015; year--) {
-      fallbackYears.push({ id: year, name: year.toString() });
-    }
-    populateSelect(document.getElementById('year'), fallbackYears, 'Seleccioná año');
-    console.log('🔄 Usando años de fallback:', fallbackYears.length);
   }
 }
 
@@ -539,22 +532,10 @@ async function loadBrands(year) {
     showLoading(document.getElementById('brand'), 'Cargando marcas...');
     const brands = await fetchWithCache(`/brands/${year}`);
     populateSelect(document.getElementById('brand'), brands, 'Seleccioná marca');
-    
     console.log(`✅ Marcas cargadas para año ${year}:`, brands.length);
   } catch (error) {
     showError(document.getElementById('brand'), 'Error cargando marcas');
     console.error('Error cargando marcas:', error);
-    
-    // Fallback: marcas hardcodeadas
-    const fallbackBrands = [
-      { id: 'chevrolet', name: 'Chevrolet' },
-      { id: 'ford', name: 'Ford' },
-      { id: 'volkswagen', name: 'Volkswagen' },
-      { id: 'toyota', name: 'Toyota' },
-      { id: 'honda', name: 'Honda' }
-    ];
-    populateSelect(document.getElementById('brand'), fallbackBrands, 'Seleccioná marca');
-    console.log('🔄 Usando marcas de fallback:', fallbackBrands.length);
   }
 }
 
@@ -569,20 +550,10 @@ async function loadModels(year, brandId) {
     showLoading(document.getElementById('model'), 'Cargando modelos...');
     const models = await fetchWithCache(`/models/${year}/${brandId}`);
     populateSelect(document.getElementById('model'), models, 'Seleccioná modelo');
-    
     console.log(`✅ Modelos cargados para marca ${brandId}:`, models.length);
   } catch (error) {
     showError(document.getElementById('model'), 'Error cargando modelos');
     console.error('Error cargando modelos:', error);
-    
-    // Fallback: modelos genéricos
-    const fallbackModels = [
-      { id: 'modelo1', name: 'Modelo Básico' },
-      { id: 'modelo2', name: 'Modelo Intermedio' },
-      { id: 'modelo3', name: 'Modelo Premium' }
-    ];
-    populateSelect(document.getElementById('model'), fallbackModels, 'Seleccioná modelo');
-    console.log('🔄 Usando modelos de fallback:', fallbackModels.length);
   }
 }
 
@@ -596,20 +567,10 @@ async function loadVersions(year, brandId, modelId) {
     showLoading(document.getElementById('version'), 'Cargando versiones...');
     const versions = await fetchWithCache(`/versions/${year}/${brandId}/${modelId}`);
     populateSelect(document.getElementById('version'), versions, 'Seleccioná versión');
-    
     console.log(`✅ Versiones cargadas para modelo ${modelId}:`, versions.length);
   } catch (error) {
     showError(document.getElementById('version'), 'Error cargando versiones');
     console.error('Error cargando versiones:', error);
-    
-    // Fallback: versiones genéricas
-    const fallbackVersions = [
-      { id: 'version1', name: 'Versión Básica' },
-      { id: 'version2', name: 'Versión Intermedia' },
-      { id: 'version3', name: 'Versión Premium' }
-    ];
-    populateSelect(document.getElementById('version'), fallbackVersions, 'Seleccioná versión');
-    console.log('🔄 Usando versiones de fallback:', fallbackVersions.length);
   }
 }
 

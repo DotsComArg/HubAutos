@@ -11,6 +11,15 @@ infoAutosService.initialize(
     process.env.INFOAUTOS_REFRESH_TOKEN
 );
 
+// Ruta OPTIONS específica para años (manejo de preflight)
+router.options('/years', (req, res) => {
+    res.header('Access-Control-Allow-Origin', 'https://hubautos.com');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.status(200).end();
+});
+
 // Middleware para manejo de errores
 const errorHandler = (err, req, res, next) => {
     console.error('Error en Info Autos API:', err);
@@ -20,20 +29,13 @@ const errorHandler = (err, req, res, next) => {
     });
 };
 
-// OPTIONS para preflight CORS
-router.options('/years', (req, res) => {
-    res.header('Access-Control-Allow-Origin', 'https://hubautos.com');
-    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
-    res.status(200).end();
-});
-
 // GET /api/infoautos/years - Obtener años disponibles
 router.get('/years', async (req, res, next) => {
-    // Headers CORS específicos
+    // Headers CORS específicos para Vercel
     res.header('Access-Control-Allow-Origin', 'https://hubautos.com');
-    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
     
     try {
         const years = await infoAutosService.getYears();
@@ -48,6 +50,12 @@ router.get('/years', async (req, res, next) => {
 
 // GET /api/infoautos/brands/:year - Obtener marcas por año
 router.get('/brands/:year', async (req, res, next) => {
+    // Headers CORS específicos para Vercel
+    res.header('Access-Control-Allow-Origin', 'https://hubautos.com');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     try {
         const { year } = req.params;
         const brands = await infoAutosService.getBrands(year);
@@ -62,6 +70,12 @@ router.get('/brands/:year', async (req, res, next) => {
 
 // GET /api/infoautos/models/:year/:brandId - Obtener modelos por marca y año
 router.get('/models/:year/:brandId', async (req, res, next) => {
+    // Headers CORS específicos para Vercel
+    res.header('Access-Control-Allow-Origin', 'https://hubautos.com');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     try {
         const { year, brandId } = req.params;
         const models = await infoAutosService.getModels(year, brandId);
@@ -76,6 +90,12 @@ router.get('/models/:year/:brandId', async (req, res, next) => {
 
 // GET /api/infoautos/versions/:year/:brandId/:modelId - Obtener versiones por modelo, marca y año
 router.get('/versions/:year/:brandId/:modelId', async (req, res, next) => {
+    // Headers CORS específicos para Vercel
+    res.header('Access-Control-Allow-Origin', 'https://hubautos.com');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     try {
         const { year, brandId, modelId } = req.params;
         const versions = await infoAutosService.getVersions(year, brandId, modelId);
