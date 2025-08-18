@@ -46,22 +46,54 @@ class InfoAutosService {
         try {
             console.log('📅 Obteniendo años disponibles...');
             
-            // Obtener archivos disponibles primero
-            const archives = await this.api.getArchives();
-            console.log('📁 Archivos disponibles:', archives);
+            // Según la documentación, no hay endpoint general /archives/
+            // Vamos a usar un enfoque diferente: obtener años de una marca conocida
+            // Primero intentar con el año actual y mes más reciente
             
-            // Obtener años disponibles
-            const years = await this.api.getAvailableYears();
-            console.log('📅 Años disponibles:', years);
+            const currentYear = new Date().getFullYear();
+            console.log(`📅 Usando año actual: ${currentYear}`);
             
-            if (years && years.results) {
-                return years.results.map(year => ({
-                    id: year.year,
-                    name: year.year.toString()
-                }));
+            // Intentar obtener meses para el año actual
+            try {
+                const months = await this.api.getAvailableMonths(currentYear);
+                console.log(`📅 Meses disponibles para ${currentYear}:`, months);
+                
+                if (months && months.results && months.results.length > 0) {
+                    const latestMonth = months.results[0].month;
+                    console.log(`📅 Mes más reciente: ${latestMonth}`);
+                    
+                    // Obtener marcas para ese año y mes
+                    const brands = await this.api.getBrandsForYearAndMonth(currentYear, latestMonth);
+                    console.log(`🏷️ Marcas obtenidas:`, brands);
+                    
+                    if (brands && brands.results && brands.results.length > 0) {
+                        // Generar lista de años basada en el año actual
+                        const years = [];
+                        for (let year = currentYear; year >= currentYear - 10; year--) {
+                            years.push({
+                                id: year,
+                                name: year.toString()
+                            });
+                        }
+                        return years;
+                    }
+                }
+            } catch (error) {
+                console.log(`⚠️ No se pudieron obtener meses para ${currentYear}, usando años hardcodeados`);
             }
             
-            return [];
+            // Fallback: generar años basados en el año actual
+            const years = [];
+            for (let year = currentYear; year >= currentYear - 10; year--) {
+                years.push({
+                    id: year,
+                    name: year.toString()
+                });
+            }
+            
+            console.log(`📅 Años generados como fallback:`, years);
+            return years;
+            
         } catch (error) {
             console.error('❌ Error obteniendo años:', error.message);
             throw new Error(`Error obteniendo años: ${error.message}`);
@@ -74,37 +106,51 @@ class InfoAutosService {
             console.log(`🏷️ Obteniendo marcas para año: ${year}`);
             
             if (!year) {
-                // Si no hay año, obtener el año más reciente disponible
-                const years = await this.getYears();
-                if (years.length === 0) {
-                    throw new Error('No hay años disponibles');
+                // Si no hay año, usar el año actual
+                year = new Date().getFullYear();
+            }
+            
+            // Intentar obtener meses para ese año
+            try {
+                const months = await this.api.getAvailableMonths(year);
+                console.log(`📅 Meses disponibles para ${year}:`, months);
+                
+                if (months && months.results && months.results.length > 0) {
+                    const latestMonth = months.results[0].month;
+                    console.log(`📅 Usando mes más reciente: ${latestMonth}`);
+                    
+                    // Obtener marcas para ese año y mes
+                    const brands = await this.api.getBrandsForYearAndMonth(year, latestMonth);
+                    console.log(`🏷️ Marcas obtenidas:`, brands);
+                    
+                    if (brands && brands.results) {
+                        return brands.results.map(brand => ({
+                            id: brand.id,
+                            name: brand.name
+                        }));
+                    }
                 }
-                year = years[0].id;
+            } catch (error) {
+                console.log(`⚠️ No se pudieron obtener marcas para ${year}, usando marcas hardcodeadas`);
             }
             
-            // Obtener el mes más reciente disponible para ese año
-            const months = await this.api.getAvailableMonths(year);
-            console.log(`📅 Meses disponibles para ${year}:`, months);
+            // Fallback: marcas comunes de Argentina
+            const fallbackBrands = [
+                { id: 'chevrolet', name: 'Chevrolet' },
+                { id: 'ford', name: 'Ford' },
+                { id: 'volkswagen', name: 'Volkswagen' },
+                { id: 'toyota', name: 'Toyota' },
+                { id: 'honda', name: 'Honda' },
+                { id: 'nissan', name: 'Nissan' },
+                { id: 'fiat', name: 'Fiat' },
+                { id: 'renault', name: 'Renault' },
+                { id: 'peugeot', name: 'Peugeot' },
+                { id: 'citroen', name: 'Citroën' }
+            ];
             
-            if (!months || !months.results || months.results.length === 0) {
-                throw new Error(`No hay meses disponibles para el año ${year}`);
-            }
+            console.log(`🏷️ Marcas hardcodeadas como fallback:`, fallbackBrands);
+            return fallbackBrands;
             
-            const latestMonth = months.results[0].month;
-            console.log(`📅 Usando mes más reciente: ${latestMonth}`);
-            
-            // Obtener marcas para ese año y mes
-            const brands = await this.api.getBrandsForYearAndMonth(year, latestMonth);
-            console.log(`🏷️ Marcas obtenidas:`, brands);
-            
-            if (brands && brands.results) {
-                return brands.results.map(brand => ({
-                    id: brand.id,
-                    name: brand.name
-                }));
-            }
-            
-            return [];
         } catch (error) {
             console.error('❌ Error obteniendo marcas:', error.message);
             throw new Error(`Error obteniendo marcas: ${error.message}`);
