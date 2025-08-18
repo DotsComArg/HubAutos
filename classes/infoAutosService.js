@@ -12,40 +12,51 @@ class InfoAutosService {
     }
 
     getCacheKey(...params) {
-        return params.join('_');
+        return params.join('|');
     }
 
     isCacheValid(key) {
+        if (!this.cache.has(key)) return false;
         const cached = this.cache.get(key);
-        return cached && (Date.now() - cached.timestamp) < this.cacheExpiry;
+        return Date.now() - cached.timestamp < this.cacheExpiry;
     }
 
     setCache(key, data) {
         this.cache.set(key, {
-            data,
+            data: data,
             timestamp: Date.now()
         });
     }
 
     getCache(key) {
-        const cached = this.cache.get(key);
-        return cached ? cached.data : null;
+        return this.cache.get(key)?.data;
     }
 
     clearCache() {
         this.cache.clear();
     }
 
-    // Obtener años disponibles
+    // Obtener años disponibles (usando el año actual y años anteriores)
     async getYears() {
-        const cacheKey = 'years';
-        
-        if (this.isCacheValid(cacheKey)) {
-            return this.getCache(cacheKey);
-        }
-
         try {
-            const years = await this.api.getYears();
+            const cacheKey = 'years';
+            if (this.isCacheValid(cacheKey)) {
+                return this.getCache(cacheKey);
+            }
+
+            // Obtener el año actual
+            const currentYear = await this.api.getCurrentYear();
+            const currentYearValue = currentYear.current_year || new Date().getFullYear();
+            
+            // Generar lista de años (últimos 30 años)
+            const years = [];
+            for (let year = currentYearValue; year >= currentYearValue - 30; year--) {
+                years.push({
+                    id: year,
+                    name: year.toString()
+                });
+            }
+
             this.setCache(cacheKey, years);
             return years;
         } catch (error) {
@@ -53,66 +64,129 @@ class InfoAutosService {
         }
     }
 
-    // Obtener marcas por año
-    async getBrands(year) {
-        if (!year) {
-            throw new Error('El año es requerido');
-        }
-
-        const cacheKey = this.getCacheKey('brands', year);
-        
-        if (this.isCacheValid(cacheKey)) {
-            return this.getCache(cacheKey);
-        }
-
+    // Obtener marcas disponibles
+    async getBrands(year = null) {
         try {
-            const brands = await this.api.getBrands(year);
+            const cacheKey = `brands_${year || 'all'}`;
+            if (this.isCacheValid(cacheKey)) {
+                return this.getCache(cacheKey);
+            }
+
+            const brands = await this.api.getBrands();
+            
+            // Si se especifica un año, filtrar solo las marcas que tienen precios para ese año
+            if (year) {
+                const filteredBrands = [];
+                for (const brand of brands) {
+                    try {
+                        const yearsForBrand = await this.api.getYearsForBrand(brand.id);
+                        if (yearsForBrand && yearsForBrand.some(y => y.year === parseInt(year))) {
+                            filteredBrands.push(brand);
+                        }
+                    } catch (error) {
+                        // Si no se pueden obtener los años, incluir la marca de todas formas
+                        filteredBrands.push(brand);
+                    }
+                }
+                this.setCache(cacheKey, filteredBrands);
+                return filteredBrands;
+            }
+
             this.setCache(cacheKey, brands);
             return brands;
         } catch (error) {
-            throw new Error(`Error obteniendo marcas para año ${year}: ${error.message}`);
+            throw new Error(`Error obteniendo marcas: ${error.message}`);
         }
     }
 
     // Obtener modelos por marca y año
     async getModels(year, brandId) {
-        if (!year || !brandId) {
-            throw new Error('El año y el ID de marca son requeridos');
-        }
-
-        const cacheKey = this.getCacheKey('models', year, brandId);
-        
-        if (this.isCacheValid(cacheKey)) {
-            return this.getCache(cacheKey);
-        }
-
         try {
-            const models = await this.api.getModels(year, brandId);
+            const cacheKey = `models_${year}_${brandId}`;
+            if (this.isCacheValid(cacheKey)) {
+                return this.getCache(cacheKey);
+            }
+
+            // Obtener modelos de la marca
+            const models = await this.api.getModelsForBrand(brandId);
+            
+            // Si se especifica un año, filtrar solo los modelos que tienen precios para ese año
+            if (year) {
+                const filteredModels = [];
+                for (const model of models) {
+                    try {
+                        const modelPrices = await this.api.getModelUsedPrices(model.codia);
+                        if (modelPrices && modelPrices.some(p => p.year === parseInt(year))) {
+                            filteredModels.push(model);
+                        }
+                    } catch (error) {
+                        // Si no se pueden obtener los precios, incluir el modelo de todas formas
+                        filteredModels.push(model);
+                    }
+                }
+                this.setCache(cacheKey, filteredModels);
+                return filteredModels;
+            }
+
             this.setCache(cacheKey, models);
             return models;
         } catch (error) {
-            throw new Error(`Error obteniendo modelos para marca ${brandId} y año ${year}: ${error.message}`);
+            throw new Error(`Error obteniendo modelos: ${error.message}`);
         }
     }
 
-    // Obtener versiones por modelo, marca y año
+    // Obtener versiones (en Info Autos, las versiones son modelos específicos)
     async getVersions(year, brandId, modelId) {
-        if (!year || !brandId || !modelId) {
-            throw new Error('El año, ID de marca e ID de modelo son requeridos');
-        }
-
-        const cacheKey = this.getCacheKey('versions', year, brandId, modelId);
-        
-        if (this.isCacheValid(cacheKey)) {
-            return this.getCache(cacheKey);
-        }
-
         try {
-            const versions = await this.api.getVersions(year, brandId, modelId);
+            const cacheKey = `versions_${year}_${brandId}_${modelId}`;
+            if (this.isCacheValid(cacheKey)) {
+                return this.getCache(cacheKey);
+            }
+
+            // En Info Autos, las versiones son modelos específicos
+            // Podemos obtener características técnicas del modelo para simular versiones
+            const model = await this.api.getModelByCodia(modelId);
+            const features = await this.api.getModelFeatures(modelId);
+            
+            // Crear versiones basadas en características técnicas
+            const versions = [];
+            if (features && features.length > 0) {
+                // Agrupar por categoría de característica
+                const categories = {};
+                features.forEach(feature => {
+                    if (!categories[feature.category_name]) {
+                        categories[feature.category_name] = [];
+                    }
+                    categories[feature.category_name].push(feature);
+                });
+
+                // Crear versiones basadas en las características más relevantes
+                Object.keys(categories).forEach(category => {
+                    if (categories[category].length > 1) {
+                        categories[category].forEach(feature => {
+                            versions.push({
+                                id: `${modelId}_${feature.id}`,
+                                name: `${feature.description}`,
+                                category: category
+                            });
+                        });
+                    }
+                });
+            }
+
+            // Si no hay características, crear una versión básica
+            if (versions.length === 0) {
+                versions.push({
+                    id: `${modelId}_basic`,
+                    name: 'Versión Básica',
+                    category: 'General'
+                });
+            }
+
             this.setCache(cacheKey, versions);
             return versions;
         } catch (error) {
-            throw new Error(`Error obteniendo versiones para modelo ${modelId}, marca ${brandId} y año ${year}: ${error.message}`);
+            throw new Error(`Error obteniendo versiones: ${error.message}`);
         }
     }
 
@@ -121,13 +195,13 @@ class InfoAutosService {
         try {
             const result = {
                 year: year,
-                brands: await this.getBrands(year),
-                models: brandId ? await this.getModels(year, brandId) : [],
-                versions: (brandId && modelId) ? await this.getVersions(year, brandId, modelId) : []
+                brand: await this.getBrands(year).then(brands => brands.find(b => b.id === brandId)),
+                model: await this.getModels(year, brandId).then(models => models.find(m => m.id === modelId)),
+                versions: await this.getVersions(year, brandId, modelId)
             };
 
-            if (versionId && result.versions.length > 0) {
-                result.selectedVersion = result.versions.find(v => v.id == versionId);
+            if (versionId) {
+                result.selectedVersion = result.versions.find(v => v.id === versionId);
             }
 
             return result;
@@ -136,44 +210,19 @@ class InfoAutosService {
         }
     }
 
-    // Buscar vehículo por texto (búsqueda fuzzy)
+    // Buscar vehículos
     async searchVehicle(searchTerm, year = null) {
         try {
-            const years = year ? [year] : await this.getYears();
-            const results = [];
-
-            for (const yearItem of years) {
-                const yearValue = yearItem.year || yearItem;
-                const brands = await this.getBrands(yearValue);
-                
-                for (const brand of brands) {
-                    if (brand.name && brand.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-                        results.push({
-                            type: 'brand',
-                            year: yearValue,
-                            brand: brand,
-                            match: brand.name
-                        });
-                    }
-
-                    const models = await this.getModels(yearValue, brand.id);
-                    for (const model of models) {
-                        if (model.name && model.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-                            results.push({
-                                type: 'model',
-                                year: yearValue,
-                                brand: brand,
-                                model: model,
-                                match: model.name
-                            });
-                        }
-                    }
-                }
+            const cacheKey = `search_${searchTerm}_${year || 'all'}`;
+            if (this.isCacheValid(cacheKey)) {
+                return this.getCache(cacheKey);
             }
 
-            return results.slice(0, 20); // Limitar a 20 resultados
+            const results = await this.api.searchModels(searchTerm, year);
+            this.setCache(cacheKey, results);
+            return results;
         } catch (error) {
-            throw new Error(`Error en búsqueda: ${error.message}`);
+            throw new Error(`Error buscando vehículo: ${error.message}`);
         }
     }
 
@@ -181,14 +230,21 @@ class InfoAutosService {
     validateVehicleData(year, brandId, modelId, versionId = null) {
         const errors = [];
 
-        if (!year) errors.push('El año es requerido');
-        if (!brandId) errors.push('La marca es requerida');
-        if (!modelId) errors.push('El modelo es requerido');
-        if (versionId === '') errors.push('La versión es requerida');
+        if (!year || year < 1990 || year > new Date().getFullYear() + 1) {
+            errors.push('Año inválido');
+        }
+
+        if (!brandId) {
+            errors.push('Marca requerida');
+        }
+
+        if (!modelId) {
+            errors.push('Modelo requerido');
+        }
 
         return {
             isValid: errors.length === 0,
-            errors
+            errors: errors
         };
     }
 }
