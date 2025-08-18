@@ -164,85 +164,83 @@ class InfoAutosApi {
         console.log('🧹 Recursos de InfoAutosApi limpiados');
     }
 
-    // Obtener años disponibles
+    // Obtener años disponibles (usar año actual)
     async getAvailableYears() {
-        return await this.makeRequest('/years/');
+        const currentYear = new Date().getFullYear();
+        return [{ id: currentYear, name: currentYear.toString() }];
     }
 
-    // Obtener marcas para un año específico
-    async getBrandsForYear(year) {
-        return await this.makeRequest(`/brands/${year}/`);
+    // Obtener marcas disponibles (endpoint actual)
+    async getBrands() {
+        return await this.makeRequest('/brands/');
     }
 
-    // Obtener modelos para una marca y año específicos
-    async getModelsForBrandAndYear(year, brandId) {
-        return await this.makeRequest(`/brands/${year}/${brandId}/models/`);
+    // Obtener modelos por marca (endpoint actual)
+    async getModelsByBrand(brandId) {
+        return await this.makeRequest(`/brands/${brandId}/models/`);
     }
 
-    // Obtener versiones para un modelo específico
-    async getVersionsForModel(year, brandId, modelId) {
-        return await this.makeRequest(`/brands/${year}/${brandId}/models/${modelId}/versions/`);
+    // Obtener grupos por marca (endpoint actual)
+    async getGroupsByBrand(brandId) {
+        return await this.makeRequest(`/brands/${brandId}/groups/`);
     }
 
-    // Obtener datos completos del vehículo
-    async getVehicleData(year, brandId, modelId, versionId) {
-        return await this.makeRequest(`/brands/${year}/${brandId}/models/${modelId}/versions/${versionId}/`);
+    // Obtener modelos por marca y grupo (endpoint actual)
+    async getModelsByBrandAndGroup(brandId, groupId) {
+        return await this.makeRequest(`/brands/${brandId}/groups/${groupId}/models/`);
     }
 
-    // Obtener años de precios para una marca y grupo específicos
-    async getYearsForBrandAndGroup(year, month, brandId, groupId) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/${brandId}/groups/${groupId}/prices/`);
+    // Obtener características de un modelo (endpoint actual)
+    async getModelFeatures(codia) {
+        return await this.makeRequest(`/models/${codia}/features/`);
     }
 
-    // Obtener modelos para una marca y grupo específicos
-    async getModelsForBrandAndGroup(year, month, brandId, groupId) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/${brandId}/groups/${groupId}/models/`);
+    // Obtener información completa de un modelo (endpoint actual)
+    async getModelByCodia(codia) {
+        return await this.makeRequest(`/models/${codia}`);
     }
 
-    // Buscar modelos
-    async searchModels(year, month, searchTerm) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/search/?q=${encodeURIComponent(searchTerm)}`);
+    // Obtener precio 0km de un modelo (endpoint actual)
+    async getModelListPrice(codia) {
+        return await this.makeRequest(`/models/${codia}/list_price`);
     }
 
-    // Obtener información completa de un modelo por CODIA
-    async getModelByCodia(year, month, codia) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/models/${codia}`);
+    // Obtener precios usados de un modelo (endpoint actual)
+    async getModelUsedPrices(codia) {
+        return await this.makeRequest(`/models/${codia}/prices/`);
     }
 
-    // Obtener precio 0km de un modelo
-    async getModelListPrice(year, month, codia) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/models/${codia}/list_price`);
+    // Obtener fotos de un modelo (endpoint actual)
+    async getModelPhotos(codia) {
+        return await this.makeRequest(`/models/${codia}/photos/`);
     }
 
-    // Obtener precios usados de un modelo
-    async getModelUsedPrices(year, month, codia) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/models/${codia}/prices/`);
-    }
-
-    // Obtener características técnicas de un modelo
-    async getModelFeatures(year, month, codia) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/models/${codia}/features/`);
-    }
-
-    // Obtener fotos de un modelo
-    async getModelPhotos(year, month, codia) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/models/${codia}/photos/`);
-    }
-
-    // Obtener todas las características disponibles
+    // Obtener todas las características disponibles (endpoint actual)
     async getAllFeatures() {
         return await this.makeRequest('/features/');
     }
 
-    // Obtener opciones de una característica específica
+    // Obtener opciones de una característica específica (endpoint actual)
     async getFeatureChoices(featureId) {
         return await this.makeRequest(`/features/${featureId}/choices/`);
     }
 
-    // Obtener fecha de última actualización
+    // Obtener fecha de última actualización (endpoint actual)
     async getLastUpdate() {
         return await this.makeRequest('/datetime');
     }
+
+    // Obtener año en curso (endpoint actual)
+    async getCurrentYear() {
+        return await this.makeRequest('/current_year');
+    }
+
+    // Búsqueda de modelos (endpoint actual)
+    async searchModels(searchTerm) {
+        return await this.makeRequest(`/search/?q=${encodeURIComponent(searchTerm)}`);
+    }
+
+
 }
 
 module.exports = InfoAutosApi;
