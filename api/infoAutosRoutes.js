@@ -20,8 +20,21 @@ const errorHandler = (err, req, res, next) => {
     });
 };
 
+// OPTIONS para preflight CORS
+router.options('/years', (req, res) => {
+    res.header('Access-Control-Allow-Origin', 'https://hubautos.com');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    res.status(200).end();
+});
+
 // GET /api/infoautos/years - Obtener años disponibles
 router.get('/years', async (req, res, next) => {
+    // Headers CORS específicos
+    res.header('Access-Control-Allow-Origin', 'https://hubautos.com');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    
     try {
         const years = await infoAutosService.getYears();
         res.json({

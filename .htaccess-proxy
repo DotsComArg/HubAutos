@@ -1,0 +1,11 @@
+# Reglas para el proxy de la API de Info Autos
+# Coloca estas reglas en tu archivo .htaccess principal de WordPress
+
+# Habilitar mod_rewrite
+RewriteEngine On
+
+# Proxy para la API de Info Autos
+RewriteRule ^api/infoautos/(.*)$ api-proxy.php [L,QSA]
+
+# Alternativa: si prefieres usar un directorio específico
+# RewriteRule ^api-proxy/infoautos/(.*)$ api-proxy.php [L,QSA]

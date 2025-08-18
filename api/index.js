@@ -8,11 +8,16 @@ const app = express();
 
 // Configuración de CORS para permitir requests desde cualquier origen
 app.use(cors({
-  origin: true, // Permite todos los orígenes
+  origin: ['https://hubautos.com', 'http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
 }));
+
+// Middleware para manejar preflight OPTIONS
+app.options('*', cors());
 
 // Middleware para parsear JSON
 app.use(express.json());
