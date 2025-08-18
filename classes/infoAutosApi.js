@@ -27,8 +27,8 @@ class InfoAutosApi {
 
             // Verificar si el token ha expirado
             if (this.tokenExpiry && Date.now() > this.tokenExpiry) {
-                console.log('🔄 Token expirado, pero Info Autos no tiene renovación automática');
-                throw new Error('Token expirado. Por favor, renueva el token manualmente en la configuración.');
+                console.log('🔄 Token expirado, renovando...');
+                await this.refreshAccessToken();
             }
 
             const config = {
@@ -59,12 +59,48 @@ class InfoAutosApi {
                 data: error.response?.data
             });
             
-            // Si es error 401, el token expiró
+            // Si es error 401, intentar renovar el token
             if (error.response?.status === 401) {
-                console.log('🔄 Token expirado. Info Autos no tiene renovación automática.');
-                throw new Error('Token expirado. Por favor, renueva el token manualmente en la configuración.');
+                console.log('🔄 Error 401, intentando renovar token...');
+                try {
+                    await this.refreshAccessToken();
+                    // Reintentar la request con el nuevo token
+                    return await this.makeRequest(endpoint, method, data);
+                } catch (refreshError) {
+                    console.error('❌ Error renovando token:', refreshError.message);
+                    throw new Error(`Error de autenticación: ${refreshError.message}`);
+                }
             }
             
+            throw error;
+        }
+    }
+
+    async refreshAccessToken() {
+        try {
+            console.log('🔄 Renovando token de acceso...');
+            
+            // Usar el endpoint correcto según la documentación
+            const response = await axios.post('https://demo.api.infoauto.com.ar/cars/auth/refresh', {}, {
+                headers: {
+                    'Authorization': `Bearer ${this.refreshToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.data.access_token) {
+                this.accessToken = response.data.access_token;
+                this.tokenExpiry = Date.now() + (60 * 60 * 1000); // 1 hora
+                console.log('✅ Token de acceso renovado exitosamente');
+            } else {
+                throw new Error('No se recibió access_token en la respuesta');
+            }
+        } catch (error) {
+            console.error('❌ Error renovando token:', {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data
+            });
             throw error;
         }
     }
