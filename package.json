@@ -20,6 +20,7 @@
     "google-libphonenumber": "^3.2.42",
     "googleapis": "^148.0.0",
     "mongodb": "^6.16.0",
+    "mongoose": "^8.17.1",
     "nanoid": "^3.3.11",
     "puppeteer-core": "^24.9.0"
   }
