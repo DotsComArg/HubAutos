@@ -7,6 +7,7 @@ const addCarRow = require('../helpers/addCarRow');
 const { formatPhoneToArgentina } = require("../utils/phone");
 const { processQuote } = require('../helpers/processQuote');
 const urlShortener = require('../utils/urlShortener');
+const infoAutosRoutes = require('./infoAutosRoutes');
 
 const { json, urlencoded } = express;
 dotenv.config();
@@ -26,6 +27,9 @@ app.get("/", (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Servidor funcionando" });
 });
+
+// Rutas de Info Autos
+app.use('/api/infoautos', infoAutosRoutes);
 
 function mapInputData(inputData) {
   return {

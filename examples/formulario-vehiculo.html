@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Vehículo - Info Autos</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        select:focus, input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        select:disabled {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .success {
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .vehicle-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border-left: 4px solid #007bff;
+        }
+        .vehicle-info h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 Formulario de Vehículo</h1>
+        
+        <form id="vehicleForm">
+            <div class="form-group">
+                <label for="year">Año *</label>
+                <select id="year" name="year" required>
+                    <option value="">Selecciona un año</option>
+                    <option value="loading" disabled>Cargando años...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="brand">Marca *</label>
+                <select id="brand" name="brand" required disabled>
+                    <option value="">Primero selecciona un año</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="model">Modelo *</label>
+                <select id="model" name="model" required disabled>
+                    <option value="">Primero selecciona una marca</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="version">Versión *</label>
+                <select id="version" name="version" required disabled>
+                    <option value="">Primero selecciona un modelo</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="fullName">Nombre Completo *</label>
+                <input type="text" id="fullName" name="fullName" required placeholder="Ingresa tu nombre completo">
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Teléfono *</label>
+                <input type="tel" id="phone" name="phone" required placeholder="Ingresa tu teléfono">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="Ingresa tu email">
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">
+                <span id="submitText">Enviar Cotización</span>
+                <span id="submitSpinner" class="spinner" style="display: none;"></span>
+            </button>
+        </form>
+
+        <div id="vehicleInfo" class="vehicle-info" style="display: none;">
+            <h3>📋 Información del Vehículo Seleccionado</h3>
+            <div id="vehicleDetails"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de la API
+        const API_BASE_URL = 'http://localhost:3000/api/infoautos';
+        
+        // Elementos del DOM
+        const yearSelect = document.getElementById('year');
+        const brandSelect = document.getElementById('brand');
+        const modelSelect = document.getElementById('model');
+        const versionSelect = document.getElementById('version');
+        const vehicleInfo = document.getElementById('vehicleInfo');
+        const vehicleDetails = document.getElementById('vehicleDetails');
+        const submitBtn = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        const submitSpinner = document.getElementById('submitSpinner');
+
+        // Estado del formulario
+        let selectedYear = null;
+        let selectedBrand = null;
+        let selectedModel = null;
+        let selectedVersion = null;
+
+        // Inicializar el formulario
+        async function initializeForm() {
+            try {
+                await loadYears();
+            } catch (error) {
+                console.error('Error inicializando formulario:', error);
+                showError('Error al cargar los años. Por favor, recarga la página.');
+            }
+        }
+
+        // Cargar años
+        async function loadYears() {
+            try {
+                yearSelect.innerHTML = '<option value="">Selecciona un año</option>';
+                
+                const response = await fetch(`${API_BASE_URL}/years`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    data.data.forEach(year => {
+                        const yearValue = year.year || year;
+                        const option = document.createElement('option');
+                        option.value = yearValue;
+                        option.textContent = yearValue;
+                        yearSelect.appendChild(option);
+                    });
+                } else {
+                    throw new Error(data.error || 'Error cargando años');
+                }
+            } catch (error) {
+                throw new Error(`Error cargando años: ${error.message}`);
+            }
+        }
+
+        // Cargar marcas
+        async function loadBrands(year) {
+            try {
+                brandSelect.innerHTML = '<option value="">Cargando marcas...</option>';
+                brandSelect.disabled = true;
+                
+                const response = await fetch(`${API_BASE_URL}/brands/${year}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    brandSelect.innerHTML = '<option value="">Selecciona una marca</option>';
+                    data.data.forEach(brand => {
+                        const option = document.createElement('option');
+                        option.value = brand.id;
+                        option.textContent = brand.name;
+                        brandSelect.appendChild(option);
+                    });
+                    brandSelect.disabled = false;
+                } else {
+                    throw new Error(data.error || 'Error cargando marcas');
+                }
+            } catch (error) {
+                brandSelect.innerHTML = '<option value="">Error cargando marcas</option>';
+                throw new Error(`Error cargando marcas: ${error.message}`);
+            }
+        }
+
+        // Cargar modelos
+        async function loadModels(year, brandId) {
+            try {
+                modelSelect.innerHTML = '<option value="">Cargando modelos...</option>';
+                modelSelect.disabled = true;
+                
+                const response = await fetch(`${API_BASE_URL}/models/${year}/${brandId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    modelSelect.innerHTML = '<option value="">Selecciona un modelo</option>';
+                    data.data.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = model.name;
+                        modelSelect.appendChild(option);
+                    });
+                    modelSelect.disabled = false;
+                } else {
+                    throw new Error(data.error || 'Error cargando modelos');
+                }
+            } catch (error) {
+                modelSelect.innerHTML = '<option value="">Error cargando modelos</option>';
+                throw new Error(`Error cargando modelos: ${error.message}`);
+            }
+        }
+
+        // Cargar versiones
+        async function loadVersions(year, brandId, modelId) {
+            try {
+                versionSelect.innerHTML = '<option value="">Cargando versiones...</option>';
+                versionSelect.disabled = true;
+                
+                const response = await fetch(`${API_BASE_URL}/versions/${year}/${brandId}/${modelId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    versionSelect.innerHTML = '<option value="">Selecciona una versión</option>';
+                    data.data.forEach(version => {
+                        const option = document.createElement('option');
+                        option.value = version.id;
+                        option.textContent = version.name;
+                        versionSelect.appendChild(option);
+                    });
+                    versionSelect.disabled = false;
+                } else {
+                    throw new Error(data.error || 'Error cargando versiones');
+                }
+            } catch (error) {
+                versionSelect.innerHTML = '<option value="">Error cargando versiones</option>';
+                throw new Error(`Error cargando versiones: ${error.message}`);
+            }
+        }
+
+        // Mostrar información del vehículo
+        function showVehicleInfo() {
+            if (selectedYear && selectedBrand && selectedModel && selectedVersion) {
+                vehicleDetails.innerHTML = `
+                    <p><strong>Año:</strong> ${selectedYear}</p>
+                    <p><strong>Marca:</strong> ${selectedBrand}</p>
+                    <p><strong>Modelo:</strong> ${selectedModel}</p>
+                    <p><strong>Versión:</strong> ${selectedVersion}</p>
+                `;
+                vehicleInfo.style.display = 'block';
+            }
+        }
+
+        // Event listeners
+        yearSelect.addEventListener('change', async (e) => {
+            const year = e.target.value;
+            if (year) {
+                selectedYear = year;
+                selectedBrand = null;
+                selectedModel = null;
+                selectedVersion = null;
+                
+                // Resetear selects dependientes
+                brandSelect.innerHTML = '<option value="">Selecciona una marca</option>';
+                brandSelect.disabled = false;
+                modelSelect.innerHTML = '<option value="">Primero selecciona una marca</option>';
+                modelSelect.disabled = true;
+                versionSelect.innerHTML = '<option value="">Primero selecciona un modelo</option>';
+                versionSelect.disabled = true;
+                
+                try {
+                    await loadBrands(year);
+                } catch (error) {
+                    console.error('Error cargando marcas:', error);
+                }
+                
+                vehicleInfo.style.display = 'none';
+            }
+        });
+
+        brandSelect.addEventListener('change', async (e) => {
+            const brandId = e.target.value;
+            if (brandId) {
+                selectedBrand = brandSelect.options[brandSelect.selectedIndex].textContent;
+                selectedModel = null;
+                selectedVersion = null;
+                
+                // Resetear selects dependientes
+                modelSelect.innerHTML = '<option value="">Selecciona un modelo</option>';
+                modelSelect.disabled = false;
+                versionSelect.innerHTML = '<option value="">Primero selecciona un modelo</option>';
+                versionSelect.disabled = true;
+                
+                try {
+                    await loadModels(selectedYear, brandId);
+                } catch (error) {
+                    console.error('Error cargando modelos:', error);
+                }
+                
+                vehicleInfo.style.display = 'none';
+            }
+        });
+
+        modelSelect.addEventListener('change', async (e) => {
+            const modelId = e.target.value;
+            if (modelId) {
+                selectedModel = modelSelect.options[modelSelect.selectedIndex].textContent;
+                selectedVersion = null;
+                
+                // Resetear select de versiones
+                versionSelect.innerHTML = '<option value="">Selecciona una versión</option>';
+                versionSelect.disabled = false;
+                
+                try {
+                    await loadVersions(selectedYear, brandSelect.value, modelId);
+                } catch (error) {
+                    console.error('Error cargando versiones:', error);
+                }
+                
+                vehicleInfo.style.display = 'none';
+            }
+        });
+
+        versionSelect.addEventListener('change', (e) => {
+            const versionId = e.target.value;
+            if (versionId) {
+                selectedVersion = versionSelect.options[versionSelect.selectedIndex].textContent;
+                showVehicleInfo();
+            }
+        });
+
+        // Manejo del formulario
+        document.getElementById('vehicleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!selectedYear || !selectedBrand || !selectedModel || !selectedVersion) {
+                alert('Por favor, completa todos los campos del vehículo');
+                return;
+            }
+            
+            // Mostrar spinner
+            submitBtn.disabled = true;
+            submitText.style.display = 'none';
+            submitSpinner.style.display = 'inline-block';
+            
+            try {
+                // Aquí puedes enviar los datos a tu backend
+                const formData = {
+                    year: selectedYear,
+                    brand: selectedBrand,
+                    model: selectedModel,
+                    version: selectedVersion,
+                    fullName: document.getElementById('fullName').value,
+                    phone: document.getElementById('phone').value,
+                    email: document.getElementById('email').value
+                };
+                
+                console.log('Datos del formulario:', formData);
+                
+                // Simular envío (reemplaza con tu lógica real)
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                alert('¡Formulario enviado exitosamente!');
+                
+            } catch (error) {
+                console.error('Error enviando formulario:', error);
+                alert('Error al enviar el formulario. Por favor, intenta nuevamente.');
+            } finally {
+                // Ocultar spinner
+                submitBtn.disabled = false;
+                submitText.style.display = 'inline';
+                submitSpinner.style.display = 'none';
+            }
+        });
+
+        // Inicializar formulario al cargar la página
+        document.addEventListener('DOMContentLoaded', initializeForm);
+    </script>
+</body>
+</html>
