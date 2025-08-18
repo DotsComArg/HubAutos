@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const mongoose = require('mongoose');
 const autoQuoteRoutes = require('./autoQuoteRoutes');
 const infoAutosRoutes = require('./infoAutosRoutes');
 const infoAutosLocalRoutes = require('./infoAutosLocalRoutes');
@@ -7,6 +8,20 @@ require('dotenv').config();
 
 // Inicializar servicio de sincronización automática
 const AutoSyncService = require('../services/autoSyncService');
+
+// Conectar a MongoDB
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+})
+.then(() => {
+  console.log('✅ Conectado a MongoDB');
+})
+.catch((error) => {
+  console.error('❌ Error conectando a MongoDB:', error);
+});
 
 const app = express();
 

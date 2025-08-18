@@ -21,57 +21,76 @@ class InfoAutosETL {
       console.log(`📅 Años encontrados: ${years.length}`);
       
       let totalVehicles = 0;
+      let errors = 0;
       
       for (const yearData of years) {
         const year = yearData.id;
         console.log(`🔄 Sincronizando año ${year}...`);
         
-        // Obtener marcas para este año
-        const brands = await this.infoAutosService.getBrands(year);
-        console.log(`  🏷️  Marcas para ${year}: ${brands.length}`);
-        
-        for (const brand of brands) {
-          try {
-            // Obtener modelos para esta marca y año
-            const models = await this.infoAutosService.getModels(year, brand.id);
-            console.log(`    🚗 Modelos para ${brand.name} ${year}: ${models.length}`);
-            
-            for (const model of models) {
-              try {
-                // Obtener versiones para este modelo
-                const versions = await this.infoAutosService.getVersions(year, brand.id, model.id);
-                console.log(`      📋 Versiones para ${model.name}: ${versions.length}`);
-                
-                for (const version of versions) {
-                  try {
-                    // Obtener datos completos del vehículo
-                    const vehicleData = await this.infoAutosService.getVehicleData(year, brand.id, model.id, version.id);
-                    
-                    // Crear o actualizar en MongoDB
-                    await this.upsertVehicle(year, brand, model, version, vehicleData);
-                    totalVehicles++;
-                    
-                  } catch (versionError) {
-                    console.error(`        ❌ Error con versión ${version.name}:`, versionError.message);
-                    // Continuar con la siguiente versión
+        try {
+          // Obtener marcas para este año
+          const brands = await this.infoAutosService.getBrands(year);
+          console.log(`  🏷️  Marcas para ${year}: ${brands.length}`);
+          
+          // Agregar delay entre años para no sobrecargar la API
+          await this.delay(1000);
+          
+          for (const brand of brands) {
+            try {
+              // Obtener modelos para esta marca y año
+              const models = await this.infoAutosService.getModels(year, brand.id);
+              console.log(`    🚗 Modelos para ${brand.name} ${year}: ${models.length}`);
+              
+              // Agregar delay entre marcas
+              await this.delay(500);
+              
+              for (const model of models) {
+                try {
+                  // Obtener versiones para este modelo
+                  const versions = await this.infoAutosService.getVersions(year, brand.id, model.id);
+                  console.log(`      📋 Versiones para ${model.name}: ${versions.length}`);
+                  
+                  // Agregar delay entre modelos
+                  await this.delay(300);
+                  
+                  for (const version of versions) {
+                    try {
+                      // Solo guardar datos esenciales, no necesitamos vehicleData completo
+                      await this.upsertVehicle(year, brand, model, version);
+                      totalVehicles++;
+                      
+                      // Agregar delay entre versiones
+                      await this.delay(100);
+                      
+                    } catch (versionError) {
+                      console.error(`        ❌ Error con versión ${version.name}:`, versionError.message);
+                      errors++;
+                      // Continuar con la siguiente versión
+                    }
                   }
+                  
+                } catch (modelError) {
+                  console.error(`      ❌ Error con modelo ${model.name}:`, modelError.message);
+                  errors++;
+                  // Continuar con el siguiente modelo
                 }
-                
-              } catch (modelError) {
-                console.error(`      ❌ Error con modelo ${model.name}:`, modelError.message);
-                // Continuar con el siguiente modelo
               }
+              
+            } catch (brandError) {
+              console.error(`    ❌ Error con marca ${brand.name}:`, brandError.message);
+              errors++;
+              // Continuar con la siguiente marca
             }
-            
-          } catch (brandError) {
-            console.error(`    ❌ Error con marca ${brand.name}:`, brandError.message);
-            // Continuar con la siguiente marca
           }
+        } catch (yearError) {
+          console.error(`❌ Error con año ${year}:`, yearError.message);
+          errors++;
+          // Continuar con el siguiente año
         }
       }
       
-      console.log(`✅ Sincronización completada. Total de vehículos: ${totalVehicles}`);
-      return { success: true, totalVehicles };
+      console.log(`✅ Sincronización completada. Total de vehículos: ${totalVehicles}, Errores: ${errors}`);
+      return { success: true, totalVehicles, errors };
       
     } catch (error) {
       console.error('❌ Error en sincronización:', error);
@@ -86,23 +105,51 @@ class InfoAutosETL {
       
       const brands = await this.infoAutosService.getBrands(year);
       let totalVehicles = 0;
+      let errors = 0;
       
       for (const brand of brands) {
-        const models = await this.infoAutosService.getModels(year, brand.id);
-        
-        for (const model of models) {
-          const versions = await this.infoAutosService.getVersions(year, brand.id, model.id);
+        try {
+          const models = await this.infoAutosService.getModels(year, brand.id);
           
-          for (const version of versions) {
-            const vehicleData = await this.infoAutosService.getVehicleData(year, brand.id, model.id, version.id);
-            await this.upsertVehicle(year, brand, model, version, vehicleData);
-            totalVehicles++;
+          // Agregar delay entre marcas
+          await this.delay(500);
+          
+          for (const model of models) {
+            try {
+              const versions = await this.infoAutosService.getVersions(year, brand.id, model.id);
+              
+              // Agregar delay entre modelos
+              await this.delay(300);
+              
+              for (const version of versions) {
+                try {
+                  // Solo guardar datos esenciales
+                  await this.upsertVehicle(year, brand, model, version);
+                  totalVehicles++;
+                  
+                  // Agregar delay entre versiones
+                  await this.delay(100);
+                  
+                } catch (versionError) {
+                  console.error(`❌ Error con versión ${version.name}:`, versionError.message);
+                  errors++;
+                }
+              }
+              
+            } catch (modelError) {
+              console.error(`❌ Error con modelo ${model.name}:`, modelError.message);
+              errors++;
+            }
           }
+          
+        } catch (brandError) {
+          console.error(`❌ Error con marca ${brand.name}:`, brandError.message);
+          errors++;
         }
       }
       
-      console.log(`✅ Año ${year} sincronizado. Vehículos: ${totalVehicles}`);
-      return { success: true, totalVehicles };
+      console.log(`✅ Año ${year} sincronizado. Vehículos: ${totalVehicles}, Errores: ${errors}`);
+      return { success: true, totalVehicles, errors };
       
     } catch (error) {
       console.error(`❌ Error sincronizando año ${year}:`, error);
@@ -124,16 +171,24 @@ class InfoAutosETL {
       brand: brand,
       model: model,
       version: version,
-      vehicleData: vehicleData || {},
+      // Solo guardar datos esenciales, no todo el vehicleData
       lastSync: new Date(),
       source: 'infoautos'
     };
     
-    await InfoAuto.findOneAndUpdate(filter, update, {
-      upsert: true,
-      new: true,
-      setDefaultsOnInsert: true
-    });
+    try {
+      await InfoAuto.findOneAndUpdate(filter, update, {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+        // Agregar timeout más corto para evitar colgar
+        maxTimeMS: 5000
+      });
+    } catch (error) {
+      console.error(`❌ Error guardando vehículo ${brand.name} ${model.name} ${version.name}:`, error.message);
+      // Continuar con el siguiente vehículo en lugar de fallar toda la sincronización
+      throw error;
+    }
   }
 
   // Limpiar datos antiguos (opcional)
@@ -174,6 +229,11 @@ class InfoAutosETL {
       console.error('❌ Error obteniendo estadísticas:', error);
       throw error;
     }
+  }
+
+  // Helper para agregar delays
+  async delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 

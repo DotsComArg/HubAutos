@@ -18,11 +18,6 @@ const infoAutoSchema = new mongoose.Schema({
     id: String,
     name: String
   },
-  // Datos adicionales del vehículo
-  vehicleData: {
-    type: mongoose.Schema.Types.Mixed,
-    default: {}
-  },
   // Metadata
   lastSync: {
     type: Date,

@@ -161,61 +161,76 @@ router.get('/sync', async (req, res) => {
         const InfoAutosETL = require('../services/infoAutosETL');
         const etl = new InfoAutosETL();
         
-        let result;
-        if (year) {
-            result = await etl.syncYear(parseInt(year));
-        } else {
-            result = await etl.syncAllData();
-        }
+        // Configurar timeout para evitar que se cuelgue
+        const timeout = setTimeout(() => {
+            console.log('⏰ Timeout en sincronización web');
+        }, 300000); // 5 minutos máximo
         
-        // Respuesta HTML para el navegador
-        res.setHeader('Content-Type', 'text/html');
-        res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Sincronización Info Autos</title>
-                <meta charset="UTF-8">
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-                    .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                    .success { color: #28a745; background: #d4edda; padding: 15px; border-radius: 5px; margin: 20px 0; }
-                    .info { color: #17a2b8; background: #d1ecf1; padding: 15px; border-radius: 5px; margin: 20px 0; }
-                    .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; text-decoration: none; display: inline-block; }
-                    .btn:hover { background: #0056b3; }
-                    .stats { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>🚗 Sincronización Info Autos</h1>
-                    
-                    <div class="success">
-                        <h3>✅ Sincronización Completada</h3>
-                        <p><strong>Mensaje:</strong> ${year ? `Sincronización del año ${year}` : 'Sincronización completa'}</p>
-                        <p><strong>Total de vehículos:</strong> ${result.totalVehicles}</p>
+        let result;
+        try {
+            if (year) {
+                result = await etl.syncYear(parseInt(year));
+            } else {
+                result = await etl.syncAllData();
+            }
+            
+            clearTimeout(timeout);
+            
+            // Respuesta HTML para el navegador
+            res.setHeader('Content-Type', 'text/html');
+            res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Sincronización Info Autos</title>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+                        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        .success { color: #28a745; background: #d4edda; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                        .info { color: #17a2b8; background: #d1ecf1; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; text-decoration: none; display: inline-block; }
+                        .btn:hover { background: #0056b3; }
+                        .stats { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>🚗 Sincronización Info Autos</h1>
+                        
+                        <div class="success">
+                            <h3>✅ Sincronización Completada</h3>
+                            <p><strong>Mensaje:</strong> ${year ? `Sincronización del año ${year}` : 'Sincronización completa'}</p>
+                            <p><strong>Total de vehículos:</strong> ${result.totalVehicles}</p>
+                            ${result.errors > 0 ? `<p><strong>Errores:</strong> ${result.errors}</p>` : ''}
+                        </div>
+                        
+                        <div class="info">
+                            <h3>📊 Acciones Disponibles</h3>
+                            <a href="/api/infoautos-local/sync" class="btn">🔄 Sincronización Completa</a>
+                            <a href="/api/infoautos-local/sync-async" class="btn">⚡ Sincronización Asíncrona</a>
+                            <a href="/api/infoautos-local/sync?year=2024" class="btn">📅 Solo 2024</a>
+                            <a href="/api/infoautos-local/sync?year=2023" class="btn">📅 Solo 2023</a>
+                            <a href="/api/infoautos-local/stats" class="btn">📈 Ver Estadísticas</a>
+                            <a href="/api/infoautos-local/years" class="btn">📋 Ver Años</a>
+                        </div>
+                        
+                        <div class="stats">
+                            <h3>📈 Próxima Sincronización Automática</h3>
+                            <p><strong>Horario:</strong> Todos los días a las 10:00 AM (hora Argentina)</p>
+                            <p><strong>Estado:</strong> Programada y activa</p>
+                        </div>
+                        
+                        <p><em>Última actualización: ${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}</em></p>
                     </div>
-                    
-                    <div class="info">
-                        <h3>📊 Acciones Disponibles</h3>
-                        <a href="/api/infoautos-local/sync" class="btn">🔄 Sincronización Completa</a>
-                        <a href="/api/infoautos-local/sync?year=2024" class="btn">📅 Solo 2024</a>
-                        <a href="/api/infoautos-local/sync?year=2023" class="btn">📅 Solo 2023</a>
-                        <a href="/api/infoautos-local/stats" class="btn">📈 Ver Estadísticas</a>
-                        <a href="/api/infoautos-local/years" class="btn">📋 Ver Años</a>
-                    </div>
-                    
-                    <div class="stats">
-                        <h3>📈 Próxima Sincronización Automática</h3>
-                        <p><strong>Horario:</strong> Todos los días a las 10:00 AM (hora Argentina)</p>
-                        <p><strong>Estado:</strong> Programada y activa</p>
-                    </div>
-                    
-                    <p><em>Última actualización: ${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}</em></p>
-                </div>
-            </body>
-            </html>
-        `);
+                </body>
+                </html>
+            `);
+            
+        } catch (syncError) {
+            clearTimeout(timeout);
+            throw syncError;
+        }
         
     } catch (error) {
         console.error('Error en sincronización:', error);
@@ -245,6 +260,79 @@ router.get('/sync', async (req, res) => {
             </body>
             </html>
         `);
+    }
+});
+
+// GET /api/infoautos-local/sync-async - Endpoint para sincronización asíncrona (no se cuelga)
+router.get('/sync-async', async (req, res) => {
+    try {
+        const { year } = req.query;
+        
+        // Iniciar sincronización en background
+        const InfoAutosETL = require('../services/infoAutosETL');
+        const etl = new InfoAutosETL();
+        
+        // Ejecutar en background sin esperar
+        setImmediate(async () => {
+            try {
+                console.log('🚀 Iniciando sincronización asíncrona...');
+                if (year) {
+                    await etl.syncYear(parseInt(year));
+                } else {
+                    await etl.syncAllData();
+                }
+                console.log('✅ Sincronización asíncrona completada');
+            } catch (error) {
+                console.error('❌ Error en sincronización asíncrona:', error);
+            }
+        });
+        
+        // Respuesta inmediata
+        res.setHeader('Content-Type', 'text/html');
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Sincronización Asíncrona Info Autos</title>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+                    .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .info { color: #17a2b8; background: #d1ecf1; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                    .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; text-decoration: none; display: inline-block; }
+                    .btn:hover { background: #0056b3; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🚗 Sincronización Asíncrona Info Autos</h1>
+                    
+                    <div class="info">
+                        <h3>🔄 Sincronización Iniciada</h3>
+                        <p><strong>Estado:</strong> Procesando en background</p>
+                        <p><strong>Tipo:</strong> ${year ? `Solo año ${year}` : 'Completa'}</p>
+                        <p><strong>Mensaje:</strong> La sincronización se está ejecutando en segundo plano. Puedes cerrar esta página.</p>
+                    </div>
+                    
+                    <div class="info">
+                        <h3>📊 Monitorear Progreso</h3>
+                        <a href="/api/infoautos-local/stats" class="btn">📈 Ver Estadísticas</a>
+                        <a href="/api/infoautos-local/years" class="btn">📋 Ver Años</a>
+                        <a href="/api/infoautos-local/sync" class="btn">🔄 Sincronización Síncrona</a>
+                    </div>
+                    
+                    <p><em>Iniciado: ${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}</em></p>
+                </div>
+            </body>
+            </html>
+        `);
+        
+    } catch (error) {
+        console.error('Error iniciando sincronización asíncrona:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error iniciando sincronización'
+        });
     }
 });
 
