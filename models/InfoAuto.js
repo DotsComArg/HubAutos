@@ -82,4 +82,4 @@ infoAutoSchema.statics.getVehicle = function(year, brandId, modelId, versionId) 
   return this.findOne(query);
 };
 
-module.exports = mongoose.model('InfoAuto', infoAutoSchema);
+module.exports = mongoose.model('InfoAuto', infoAutoSchema, 'info-autos');
