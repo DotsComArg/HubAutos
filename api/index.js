@@ -7,6 +7,8 @@ const addCarRow = require('../helpers/addCarRow');
 const { formatPhoneToArgentina } = require("../utils/phone");
 const { processQuote } = require('../helpers/processQuote');
 const urlShortener = require('../utils/urlShortener');
+const MongoService = require('../services/mongoService');
+const formEntryRoutes = require('./formEntryRoutes');
 
 const { json, urlencoded } = express;
 dotenv.config();
@@ -15,6 +17,9 @@ const app = express();
 app.use(cors());
 app.use(json());
 app.use(urlencoded({ extended: true }));
+
+// Rutas de formEntrys
+app.use('/api/form-entries', formEntryRoutes);
 
 const port = process.env.PORT || 3000;
 
@@ -218,13 +223,21 @@ app.post("/api/auto-quote", async (req, res) => {
       return res.status(400).json({ error: "No se recibieron datos" });
     }
     
+    // Guardar en Google Sheets
     await addCarRow(req.body);
+    
+    // Guardar en MongoDB
+    const mongoService = new MongoService();
+    const mongoEntry = await mongoService.saveFormEntry(req.body);
+    
+    // Procesar en Kommo
     const leadId = await processKommoLead(req.body);
     
     res.json({
       message: "Datos recibidos correctamente",
       data: req.body,
-      leadId: leadId
+      leadId: leadId,
+      mongoId: mongoEntry._id
     });
   } catch (error) {
     console.error("Error al procesar la solicitud:", error);
