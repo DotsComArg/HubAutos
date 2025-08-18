@@ -14,17 +14,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
-// Middleware para manejar preflight OPTIONS
-app.options('*', (req, res) => {
-  const origin = req.headers.origin;
-  if (origin === 'https://hubautos.com' || origin === 'http://localhost:3000' || origin === 'http://localhost:3001') {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.status(200).end();
-});
+
 
 // Middleware para agregar headers CORS a todas las respuestas
 app.use((req, res, next) => {
@@ -35,6 +25,13 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+  
+  // Manejar preflight OPTIONS inmediatamente
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
   next();
 });
 
