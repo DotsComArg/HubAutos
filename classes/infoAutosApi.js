@@ -6,17 +6,59 @@ class InfoAutosApi {
         this.accessToken = null;
         this.refreshToken = null;
         this.tokenExpiry = null;
+        this.tokenRefreshInterval = null;
+        this.isRefreshing = false;
     }
 
     setTokens(accessToken, refreshToken) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.tokenExpiry = Date.now() + (60 * 60 * 1000); // 1 hora
+        
         console.log('✅ Tokens configurados:', { 
             hasAccessToken: !!this.accessToken, 
             hasRefreshToken: !!this.refreshToken,
             expiry: new Date(this.tokenExpiry).toISOString()
         });
+
+        // Iniciar el cronjob de renovación automática
+        this.startTokenRefreshCronjob();
+    }
+
+    startTokenRefreshCronjob() {
+        if (this.tokenRefreshInterval) {
+            clearInterval(this.tokenRefreshInterval);
+        }
+
+        // Renovar token cada 50 minutos (antes de que expire a la hora)
+        this.tokenRefreshInterval = setInterval(async () => {
+            try {
+                console.log('🔄 Cronjob: Renovando token automáticamente...');
+                await this.refreshAccessToken();
+                console.log('✅ Cronjob: Token renovado exitosamente');
+            } catch (error) {
+                console.error('❌ Cronjob: Error renovando token:', error.message);
+                // Si falla, intentar nuevamente en 5 minutos
+                setTimeout(async () => {
+                    try {
+                        await this.refreshAccessToken();
+                        console.log('✅ Cronjob: Token renovado en segundo intento');
+                    } catch (retryError) {
+                        console.error('❌ Cronjob: Error en segundo intento:', retryError.message);
+                    }
+                }, 5 * 60 * 1000);
+            }
+        }, 50 * 60 * 1000); // 50 minutos
+
+        console.log('⏰ Cronjob de renovación de tokens iniciado (cada 50 minutos)');
+    }
+
+    stopTokenRefreshCronjob() {
+        if (this.tokenRefreshInterval) {
+            clearInterval(this.tokenRefreshInterval);
+            this.tokenRefreshInterval = null;
+            console.log('⏰ Cronjob de renovación de tokens detenido');
+        }
     }
 
     async makeRequest(endpoint, method = 'GET', data = null) {
@@ -25,9 +67,9 @@ class InfoAutosApi {
                 throw new Error('No se han configurado los tokens de acceso');
             }
 
-            // Verificar si el token ha expirado
+            // Verificar si el token ha expirado (solo como respaldo)
             if (this.tokenExpiry && Date.now() > this.tokenExpiry) {
-                console.log('🔄 Token expirado, renovando...');
+                console.log('🔄 Token expirado, renovando como respaldo...');
                 await this.refreshAccessToken();
             }
 
@@ -59,14 +101,17 @@ class InfoAutosApi {
                 data: error.response?.data
             });
             
-            // Si es error 401, intentar renovar el token
-            if (error.response?.status === 401) {
-                console.log('🔄 Error 401, intentando renovar token...');
+            // Si es error 401, intentar renovar el token una sola vez
+            if (error.response?.status === 401 && !this.isRefreshing) {
+                console.log('🔄 Error 401, renovando token como respaldo...');
                 try {
+                    this.isRefreshing = true;
                     await this.refreshAccessToken();
+                    this.isRefreshing = false;
                     // Reintentar la request con el nuevo token
                     return await this.makeRequest(endpoint, method, data);
                 } catch (refreshError) {
+                    this.isRefreshing = false;
                     console.error('❌ Error renovando token:', refreshError.message);
                     throw new Error(`Error de autenticación: ${refreshError.message}`);
                 }
@@ -108,8 +153,15 @@ class InfoAutosApi {
     // Método para actualizar tokens manualmente
     updateTokens(newAccessToken, newRefreshToken) {
         console.log('🔄 Actualizando tokens manualmente...');
-        this.setTokens(newAccessToken, newRefreshToken);
+        this.stopTokenRefreshCronjob(); // Detener cronjob anterior
+        this.setTokens(newAccessToken, newRefreshToken); // Iniciar nuevo cronjob
         console.log('✅ Tokens actualizados manualmente');
+    }
+
+    // Método para limpiar recursos
+    cleanup() {
+        this.stopTokenRefreshCronjob();
+        console.log('🧹 Recursos de InfoAutosApi limpiados');
     }
 
     // Obtener archivos disponibles

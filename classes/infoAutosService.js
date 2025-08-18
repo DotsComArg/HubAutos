@@ -274,6 +274,19 @@ class InfoAutosService {
             errors: errors
         };
     }
+
+    // Método para obtener la instancia de la API (para debugging)
+    getApi() {
+        return this.api;
+    }
+
+    // Método para limpiar recursos
+    cleanup() {
+        if (this.api) {
+            this.api.cleanup();
+        }
+        console.log('🧹 Recursos de InfoAutosService limpiados');
+    }
 }
 
 module.exports = InfoAutosService;

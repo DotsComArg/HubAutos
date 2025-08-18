@@ -187,6 +187,39 @@ router.post('/update-tokens', async (req, res) => {
     }
 });
 
+// Endpoint para verificar el estado del token
+router.get('/token-status', async (req, res) => {
+    try {
+        const api = infoAutosService.getApi();
+        if (!api) {
+            return res.status(400).json({
+                success: false,
+                error: 'InfoAutosService no está inicializado'
+            });
+        }
+
+        const tokenInfo = {
+            hasAccessToken: !!api.accessToken,
+            hasRefreshToken: !!api.refreshToken,
+            tokenExpiry: api.tokenExpiry ? new Date(api.tokenExpiry).toISOString() : null,
+            isExpired: api.tokenExpiry ? Date.now() > api.tokenExpiry : true,
+            cronjobActive: !!api.tokenRefreshInterval,
+            timeUntilExpiry: api.tokenExpiry ? Math.max(0, api.tokenExpiry - Date.now()) : 0
+        };
+
+        res.json({
+            success: true,
+            tokenInfo
+        });
+    } catch (error) {
+        console.error('Error verificando estado del token:', error.message);
+        res.status(500).json({
+            success: false,
+            error: `Error verificando estado del token: ${error.message}`
+        });
+    }
+});
+
 // Aplicar middleware de manejo de errores
 router.use(errorHandler);
 
