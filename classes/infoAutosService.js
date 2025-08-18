@@ -41,48 +41,25 @@ class InfoAutosService {
         this.cache.clear();
     }
 
-    // Obtener años disponibles (usando el año actual y años anteriores)
+    // Obtener años disponibles
     async getYears() {
         try {
             console.log('📅 Obteniendo años disponibles...');
             
-            // Según la documentación, no hay endpoint general /archives/
-            // Vamos a usar un enfoque diferente: obtener años de una marca conocida
-            // Primero intentar con el año actual y mes más reciente
-            
-            const currentYear = new Date().getFullYear();
-            console.log(`📅 Usando año actual: ${currentYear}`);
-            
-            // Intentar obtener meses para el año actual
+            // Intentar obtener años desde la API
             try {
-                const months = await this.api.getAvailableMonths(currentYear);
-                console.log(`📅 Meses disponibles para ${currentYear}:`, months);
+                const years = await this.api.getAvailableYears();
+                console.log(`📅 Años obtenidos de la API:`, years);
                 
-                if (months && months.results && months.results.length > 0) {
-                    const latestMonth = months.results[0].month;
-                    console.log(`📅 Mes más reciente: ${latestMonth}`);
-                    
-                    // Obtener marcas para ese año y mes
-                    const brands = await this.api.getBrandsForYearAndMonth(currentYear, latestMonth);
-                    console.log(`🏷️ Marcas obtenidas:`, brands);
-                    
-                    if (brands && brands.results && brands.results.length > 0) {
-                        // Generar lista de años basada en el año actual
-                        const years = [];
-                        for (let year = currentYear; year >= currentYear - 10; year--) {
-                            years.push({
-                                id: year,
-                                name: year.toString()
-                            });
-                        }
-                        return years;
-                    }
+                if (years && years.length > 0) {
+                    return years;
                 }
             } catch (error) {
-                console.log(`⚠️ No se pudieron obtener meses para ${currentYear}, usando años hardcodeados`);
+                console.log(`⚠️ No se pudieron obtener años de la API:`, error.message);
             }
             
             // Fallback: generar años basados en el año actual
+            const currentYear = new Date().getFullYear();
             const years = [];
             for (let year = currentYear; year >= currentYear - 10; year--) {
                 years.push({
@@ -110,28 +87,16 @@ class InfoAutosService {
                 year = new Date().getFullYear();
             }
             
-            // Intentar obtener meses para ese año
+            // Intentar obtener marcas desde la API
             try {
-                const months = await this.api.getAvailableMonths(year);
-                console.log(`📅 Meses disponibles para ${year}:`, months);
+                const brands = await this.api.getBrandsForYear(year);
+                console.log(`🏷️ Marcas obtenidas de la API:`, brands);
                 
-                if (months && months.results && months.results.length > 0) {
-                    const latestMonth = months.results[0].month;
-                    console.log(`📅 Usando mes más reciente: ${latestMonth}`);
-                    
-                    // Obtener marcas para ese año y mes
-                    const brands = await this.api.getBrandsForYearAndMonth(year, latestMonth);
-                    console.log(`🏷️ Marcas obtenidas:`, brands);
-                    
-                    if (brands && brands.results) {
-                        return brands.results.map(brand => ({
-                            id: brand.id,
-                            name: brand.name
-                        }));
-                    }
+                if (brands && brands.length > 0) {
+                    return brands;
                 }
             } catch (error) {
-                console.log(`⚠️ No se pudieron obtener marcas para ${year}, usando marcas hardcodeadas`);
+                console.log(`⚠️ No se pudieron obtener marcas para ${year} desde la API:`, error.message);
             }
             
             // Fallback: marcas comunes de Argentina
@@ -166,36 +131,30 @@ class InfoAutosService {
                 throw new Error('Se requiere año y marca para obtener modelos');
             }
             
-            // Obtener el mes más reciente disponible para ese año
-            const months = await this.api.getAvailableMonths(year);
-            if (!months || !months.results || months.results.length === 0) {
-                throw new Error(`No hay meses disponibles para el año ${year}`);
+            // Intentar obtener modelos desde la API
+            try {
+                const models = await this.api.getModelsForBrandAndYear(year, brandId);
+                console.log(`🚗 Modelos obtenidos de la API:`, models);
+                
+                if (models && models.length > 0) {
+                    return models;
+                }
+            } catch (error) {
+                console.log(`⚠️ No se pudieron obtener modelos para ${year}/${brandId} desde la API:`, error.message);
             }
             
-            const latestMonth = months.results[0].month;
-            console.log(`📅 Usando mes más reciente: ${latestMonth}`);
+            // Fallback: modelos básicos para la marca
+            const fallbackModels = this.getFallbackModels(brandId);
+            console.log(`🚗 Modelos fallback para ${brandId}:`, fallbackModels);
+            return fallbackModels;
             
-            // Obtener modelos para esa marca, año y mes
-            const models = await this.api.getModelsForBrand(year, latestMonth, brandId);
-            console.log(`🚗 Modelos obtenidos:`, models);
-            
-            if (models && models.results) {
-                return models.results.map(model => ({
-                    id: model.codia,
-                    name: model.name,
-                    brand: model.brand,
-                    group: model.group
-                }));
-            }
-            
-            return [];
         } catch (error) {
             console.error('❌ Error obteniendo modelos:', error.message);
             throw new Error(`Error obteniendo modelos: ${error.message}`);
         }
     }
 
-    // Obtener versiones (en Info Autos, las versiones son modelos específicos)
+    // Obtener versiones para un modelo específico
     async getVersions(year, brandId, modelId) {
         try {
             console.log(`🔧 Obteniendo versiones para modelo: ${modelId}`);
@@ -204,53 +163,23 @@ class InfoAutosService {
                 throw new Error('Se requiere año, marca y modelo para obtener versiones');
             }
             
-            // Obtener el mes más reciente disponible para ese año
-            const months = await this.api.getAvailableMonths(year);
-            if (!months || !months.results || months.results.length === 0) {
-                throw new Error(`No hay meses disponibles para el año ${year}`);
-            }
-            
-            const latestMonth = months.results[0].month;
-            
-            // Obtener características del modelo para simular versiones
-            const features = await this.api.getModelFeatures(year, latestMonth, modelId);
-            console.log(`🔧 Características obtenidas:`, features);
-            
-            if (features && features.results) {
-                // Simular versiones basadas en características
-                const versions = [];
-                features.results.forEach(feature => {
-                    if (feature.choices && feature.choices.length > 0) {
-                        feature.choices.forEach(choice => {
-                            versions.push({
-                                id: `${feature.id}_${choice.id}`,
-                                name: `${feature.name}: ${choice.name}`,
-                                feature: feature.name,
-                                value: choice.name
-                            });
-                        });
-                    }
-                });
+            // Intentar obtener versiones desde la API
+            try {
+                const versions = await this.api.getVersionsForModel(year, brandId, modelId);
+                console.log(`🔧 Versiones obtenidas de la API:`, versions);
                 
-                // Si no hay características con opciones, crear una versión genérica
-                if (versions.length === 0) {
-                    versions.push({
-                        id: 'default',
-                        name: 'Versión estándar',
-                        feature: 'Versión',
-                        value: 'Estándar'
-                    });
+                if (versions && versions.length > 0) {
+                    return versions;
                 }
-                
-                return versions;
+            } catch (error) {
+                console.log(`⚠️ No se pudieron obtener versiones para ${year}/${brandId}/${modelId} desde la API:`, error.message);
             }
             
-            return [{
-                id: 'default',
-                name: 'Versión estándar',
-                feature: 'Versión',
-                value: 'Estándar'
-            }];
+            // Fallback: versiones básicas para el modelo
+            const fallbackVersions = this.getFallbackVersions(modelId);
+            console.log(`🔧 Versiones fallback para ${modelId}:`, fallbackVersions);
+            return fallbackVersions;
+            
         } catch (error) {
             console.error('❌ Error obteniendo versiones:', error.message);
             // Retornar versión por defecto en caso de error
@@ -332,6 +261,111 @@ class InfoAutosService {
             this.api.cleanup();
         }
         console.log('🧹 Recursos de InfoAutosService limpiados');
+    }
+
+    // Métodos de fallback para datos cuando la API no responde
+    getFallbackModels(brandId) {
+        const models = {
+            chevrolet: [
+                { id: 'cruze', name: 'Cruze' },
+                { id: 'onix', name: 'Onix' },
+                { id: 'prisma', name: 'Prisma' },
+                { id: 'cobalt', name: 'Cobalt' },
+                { id: 's10', name: 'S10' }
+            ],
+            ford: [
+                { id: 'focus', name: 'Focus' },
+                { id: 'fiesta', name: 'Fiesta' },
+                { id: 'ranger', name: 'Ranger' },
+                { id: 'ecosport', name: 'EcoSport' },
+                { id: 'territory', name: 'Territory' }
+            ],
+            volkswagen: [
+                { id: 'gol', name: 'Gol' },
+                { id: 'polo', name: 'Polo' },
+                { id: 'vento', name: 'Vento' },
+                { id: 'amarok', name: 'Amarok' },
+                { id: 'tiguan', name: 'Tiguan' }
+            ],
+            toyota: [
+                { id: 'corolla', name: 'Corolla' },
+                { id: 'yaris', name: 'Yaris' },
+                { id: 'hilux', name: 'Hilux' },
+                { id: 'sw4', name: 'SW4' },
+                { id: 'rav4', name: 'RAV4' }
+            ],
+            honda: [
+                { id: 'civic', name: 'Civic' },
+                { id: 'city', name: 'City' },
+                { id: 'hrv', name: 'HR-V' },
+                { id: 'crv', name: 'CR-V' }
+            ],
+            nissan: [
+                { id: 'sentra', name: 'Sentra' },
+                { id: 'versa', name: 'Versa' },
+                { id: 'frontier', name: 'Frontier' },
+                { id: 'xtrail', name: 'X-Trail' }
+            ],
+            fiat: [
+                { id: 'palio', name: 'Palio' },
+                { id: 'punto', name: 'Punto' },
+                { id: 'idea', name: 'Idea' },
+                { id: 'doblo', name: 'Doblo' }
+            ],
+            renault: [
+                { id: 'clio', name: 'Clio' },
+                { id: 'megane', name: 'Megane' },
+                { id: 'captur', name: 'Captur' },
+                { id: 'koleos', name: 'Koleos' }
+            ],
+            peugeot: [
+                { id: '208', name: '208' },
+                { id: '308', name: '308' },
+                { id: '2008', name: '2008' },
+                { id: '3008', name: '3008' }
+            ],
+            citroen: [
+                { id: 'c3', name: 'C3' },
+                { id: 'c4', name: 'C4' },
+                { id: 'c4cactus', name: 'C4 Cactus' }
+            ]
+        };
+        
+        return models[brandId] || [
+            { id: 'default', name: 'Modelo estándar' }
+        ];
+    }
+
+    getFallbackVersions(modelId) {
+        // Versiones básicas para modelos comunes
+        const versions = {
+            cruze: [
+                { id: 'lt', name: 'LT' },
+                { id: 'ltz', name: 'LTZ' },
+                { id: 'premier', name: 'Premier' }
+            ],
+            focus: [
+                { id: 'se', name: 'SE' },
+                { id: 'titanium', name: 'Titanium' },
+                { id: 'st', name: 'ST' }
+            ],
+            gol: [
+                { id: 'trend', name: 'Trend' },
+                { id: 'comfortline', name: 'Comfortline' },
+                { id: 'highline', name: 'Highline' }
+            ],
+            corolla: [
+                { id: 'xe', name: 'XE' },
+                { id: 'xei', name: 'XEI' },
+                { id: 'xei_premium', name: 'XEI Premium' }
+            ]
+        };
+        
+        return versions[modelId] || [
+            { id: 'base', name: 'Base' },
+            { id: 'comfort', name: 'Comfort' },
+            { id: 'premium', name: 'Premium' }
+        ];
     }
 }
 

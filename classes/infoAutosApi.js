@@ -164,39 +164,29 @@ class InfoAutosApi {
         console.log('🧹 Recursos de InfoAutosApi limpiados');
     }
 
-    // Obtener archivos disponibles
-    async getArchives() {
-        return await this.makeRequest('/archives/');
-    }
-
     // Obtener años disponibles
     async getAvailableYears() {
-        return await this.makeRequest('/archives/years/');
+        return await this.makeRequest('/years/');
     }
 
-    // Obtener meses disponibles para un año
-    async getAvailableMonths(year) {
-        return await this.makeRequest(`/archives/years/${year}/months/`);
+    // Obtener marcas para un año específico
+    async getBrandsForYear(year) {
+        return await this.makeRequest(`/brands/${year}/`);
     }
 
-    // Obtener marcas para un año y mes específicos
-    async getBrandsForYearAndMonth(year, month) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/`);
+    // Obtener modelos para una marca y año específicos
+    async getModelsForBrandAndYear(year, brandId) {
+        return await this.makeRequest(`/brands/${year}/${brandId}/models/`);
     }
 
-    // Obtener años de precios para una marca específica
-    async getYearsForBrand(year, month, brandId) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/${brandId}/prices/`);
+    // Obtener versiones para un modelo específico
+    async getVersionsForModel(year, brandId, modelId) {
+        return await this.makeRequest(`/brands/${year}/${brandId}/models/${modelId}/versions/`);
     }
 
-    // Obtener grupos para una marca específica
-    async getGroupsForBrand(year, month, brandId) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/${brandId}/groups/`);
-    }
-
-    // Obtener modelos para una marca específica
-    async getModelsForBrand(year, month, brandId) {
-        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/${brandId}/models/`);
+    // Obtener datos completos del vehículo
+    async getVehicleData(year, brandId, modelId, versionId) {
+        return await this.makeRequest(`/brands/${year}/${brandId}/models/${modelId}/versions/${versionId}/`);
     }
 
     // Obtener años de precios para una marca y grupo específicos
