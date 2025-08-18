@@ -18,7 +18,7 @@ app.use(cors());
 app.use(json());
 app.use(urlencoded({ extended: true }));
 
-// Rutas de formEntrys
+// Rutas de formEntrys - Backend con paginación implementado
 app.use('/api/form-entries', formEntryRoutes);
 
 const port = process.env.PORT || 3000;
