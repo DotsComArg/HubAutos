@@ -12,6 +12,11 @@ class InfoAutosApi {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.tokenExpiry = Date.now() + (60 * 60 * 1000); // 1 hora
+        console.log('✅ Tokens configurados:', { 
+            hasAccessToken: !!this.accessToken, 
+            hasRefreshToken: !!this.refreshToken,
+            expiry: new Date(this.tokenExpiry).toISOString()
+        });
     }
 
     async makeRequest(endpoint, method = 'GET', data = null) {
@@ -20,7 +25,9 @@ class InfoAutosApi {
                 throw new Error('No se han configurado los tokens de acceso');
             }
 
+            // Verificar si el token ha expirado
             if (this.tokenExpiry && Date.now() > this.tokenExpiry) {
+                console.log('🔄 Token expirado, renovando...');
                 await this.refreshAccessToken();
             }
 
@@ -29,7 +36,8 @@ class InfoAutosApi {
                 url: `${this.baseURL}${endpoint}`,
                 headers: {
                     'Authorization': `Bearer ${this.accessToken}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 }
             };
 
@@ -37,16 +45,41 @@ class InfoAutosApi {
                 config.data = data;
             }
 
+            console.log(`🌐 Haciendo request a: ${config.url}`);
+            console.log(`🔑 Usando token: ${this.accessToken.substring(0, 20)}...`);
+
             const response = await axios(config);
+            console.log(`✅ Request exitoso a ${endpoint}:`, response.status);
             return response.data;
         } catch (error) {
-            console.error(`Error en request a ${endpoint}:`, error.message);
+            console.error(`❌ Error en request a ${endpoint}:`, {
+                message: error.message,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data
+            });
+            
+            // Si es error 401, intentar renovar el token
+            if (error.response?.status === 401) {
+                console.log('🔄 Error 401, intentando renovar token...');
+                try {
+                    await this.refreshAccessToken();
+                    // Reintentar la request con el nuevo token
+                    return await this.makeRequest(endpoint, method, data);
+                } catch (refreshError) {
+                    console.error('❌ Error renovando token:', refreshError.message);
+                    throw new Error(`Error de autenticación: ${refreshError.message}`);
+                }
+            }
+            
             throw error;
         }
     }
 
     async refreshAccessToken() {
         try {
+            console.log('🔄 Renovando token de acceso...');
+            
             const response = await axios.post(`${this.baseURL}/auth/refresh`, {}, {
                 headers: {
                     'Authorization': `Bearer ${this.refreshToken}`,
@@ -57,81 +90,93 @@ class InfoAutosApi {
             if (response.data.access_token) {
                 this.accessToken = response.data.access_token;
                 this.tokenExpiry = Date.now() + (60 * 60 * 1000);
-                console.log('✅ Token de acceso renovado');
+                console.log('✅ Token de acceso renovado exitosamente');
+            } else {
+                throw new Error('No se recibió access_token en la respuesta');
             }
         } catch (error) {
-            console.error('❌ Error renovando token:', error.message);
+            console.error('❌ Error renovando token:', {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data
+            });
             throw error;
         }
     }
 
-    // Obtener el año actual
-    async getCurrentYear() {
-        return await this.makeRequest('/current_year');
+    // Obtener archivos disponibles
+    async getArchives() {
+        return await this.makeRequest('/archives/');
     }
 
-    // Obtener todas las marcas
-    async getBrands() {
-        return await this.makeRequest('/brands/');
+    // Obtener años disponibles
+    async getAvailableYears() {
+        return await this.makeRequest('/archives/years/');
     }
 
-    // Obtener años disponibles para una marca específica
-    async getYearsForBrand(brandId) {
-        return await this.makeRequest(`/brands/${brandId}/prices/`);
+    // Obtener meses disponibles para un año
+    async getAvailableMonths(year) {
+        return await this.makeRequest(`/archives/years/${year}/months/`);
     }
 
-    // Obtener grupos de una marca
-    async getGroupsForBrand(brandId) {
-        return await this.makeRequest(`/brands/${brandId}/groups/`);
+    // Obtener marcas para un año y mes específicos
+    async getBrandsForYearAndMonth(year, month) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/`);
     }
 
-    // Obtener modelos de una marca
-    async getModelsForBrand(brandId) {
-        return await this.makeRequest(`/brands/${brandId}/models/`);
+    // Obtener años de precios para una marca específica
+    async getYearsForBrand(year, month, brandId) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/${brandId}/prices/`);
     }
 
-    // Obtener modelos de una marca y grupo específicos
-    async getModelsForBrandAndGroup(brandId, groupId) {
-        return await this.makeRequest(`/brands/${brandId}/groups/${groupId}/models/`);
+    // Obtener grupos para una marca específica
+    async getGroupsForBrand(year, month, brandId) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/${brandId}/groups/`);
     }
 
-    // Obtener años disponibles para una marca y grupo específicos
-    async getYearsForBrandAndGroup(brandId, groupId) {
-        return await this.makeRequest(`/brands/${brandId}/groups/${groupId}/prices/`);
+    // Obtener modelos para una marca específica
+    async getModelsForBrand(year, month, brandId) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/${brandId}/models/`);
+    }
+
+    // Obtener años de precios para una marca y grupo específicos
+    async getYearsForBrandAndGroup(year, month, brandId, groupId) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/${brandId}/groups/${groupId}/prices/`);
+    }
+
+    // Obtener modelos para una marca y grupo específicos
+    async getModelsForBrandAndGroup(year, month, brandId, groupId) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/brands/${brandId}/groups/${groupId}/models/`);
     }
 
     // Buscar modelos
-    async searchModels(searchTerm, year = null) {
-        let endpoint = `/search/?q=${encodeURIComponent(searchTerm)}`;
-        if (year) {
-            endpoint += `&year=${year}`;
-        }
-        return await this.makeRequest(endpoint);
+    async searchModels(year, month, searchTerm) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/search/?q=${encodeURIComponent(searchTerm)}`);
     }
 
     // Obtener información completa de un modelo por CODIA
-    async getModelByCodia(codia) {
-        return await this.makeRequest(`/models/${codia}`);
+    async getModelByCodia(year, month, codia) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/models/${codia}`);
     }
 
     // Obtener precio 0km de un modelo
-    async getModelListPrice(codia) {
-        return await this.makeRequest(`/models/${codia}/list_price`);
+    async getModelListPrice(year, month, codia) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/models/${codia}/list_price`);
     }
 
     // Obtener precios usados de un modelo
-    async getModelUsedPrices(codia) {
-        return await this.makeRequest(`/models/${codia}/prices/`);
+    async getModelUsedPrices(year, month, codia) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/models/${codia}/prices/`);
     }
 
     // Obtener características técnicas de un modelo
-    async getModelFeatures(codia) {
-        return await this.makeRequest(`/models/${codia}/features/`);
+    async getModelFeatures(year, month, codia) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/models/${codia}/features/`);
     }
 
     // Obtener fotos de un modelo
-    async getModelPhotos(codia) {
-        return await this.makeRequest(`/models/${codia}/photos/`);
+    async getModelPhotos(year, month, codia) {
+        return await this.makeRequest(`/archives/years/${year}/months/${month}/models/${codia}/photos/`);
     }
 
     // Obtener todas las características disponibles

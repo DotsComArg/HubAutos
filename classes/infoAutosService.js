@@ -8,7 +8,12 @@ class InfoAutosService {
     }
 
     initialize(accessToken, refreshToken) {
+        console.log('🚀 Inicializando InfoAutosService...');
+        console.log('🔑 Access Token recibido:', accessToken ? `${accessToken.substring(0, 20)}...` : 'NO RECIBIDO');
+        console.log('🔑 Refresh Token recibido:', refreshToken ? `${refreshToken.substring(0, 20)}...` : 'NO RECIBIDO');
+        
         this.api.setTokens(accessToken, refreshToken);
+        console.log('✅ InfoAutosService inicializado');
     }
 
     getCacheKey(...params) {
@@ -39,27 +44,26 @@ class InfoAutosService {
     // Obtener años disponibles (usando el año actual y años anteriores)
     async getYears() {
         try {
-            const cacheKey = 'years';
-            if (this.isCacheValid(cacheKey)) {
-                return this.getCache(cacheKey);
-            }
-
-            // Obtener el año actual
-            const currentYear = await this.api.getCurrentYear();
-            const currentYearValue = currentYear.current_year || new Date().getFullYear();
+            console.log('📅 Obteniendo años disponibles...');
             
-            // Generar lista de años (últimos 30 años)
-            const years = [];
-            for (let year = currentYearValue; year >= currentYearValue - 30; year--) {
-                years.push({
-                    id: year,
-                    name: year.toString()
-                });
+            // Obtener archivos disponibles primero
+            const archives = await this.api.getArchives();
+            console.log('📁 Archivos disponibles:', archives);
+            
+            // Obtener años disponibles
+            const years = await this.api.getAvailableYears();
+            console.log('📅 Años disponibles:', years);
+            
+            if (years && years.results) {
+                return years.results.map(year => ({
+                    id: year.year,
+                    name: year.year.toString()
+                }));
             }
-
-            this.setCache(cacheKey, years);
-            return years;
+            
+            return [];
         } catch (error) {
+            console.error('❌ Error obteniendo años:', error.message);
             throw new Error(`Error obteniendo años: ${error.message}`);
         }
     }
@@ -67,34 +71,42 @@ class InfoAutosService {
     // Obtener marcas disponibles
     async getBrands(year = null) {
         try {
-            const cacheKey = `brands_${year || 'all'}`;
-            if (this.isCacheValid(cacheKey)) {
-                return this.getCache(cacheKey);
-            }
-
-            const brands = await this.api.getBrands();
+            console.log(`🏷️ Obteniendo marcas para año: ${year}`);
             
-            // Si se especifica un año, filtrar solo las marcas que tienen precios para ese año
-            if (year) {
-                const filteredBrands = [];
-                for (const brand of brands) {
-                    try {
-                        const yearsForBrand = await this.api.getYearsForBrand(brand.id);
-                        if (yearsForBrand && yearsForBrand.some(y => y.year === parseInt(year))) {
-                            filteredBrands.push(brand);
-                        }
-                    } catch (error) {
-                        // Si no se pueden obtener los años, incluir la marca de todas formas
-                        filteredBrands.push(brand);
-                    }
+            if (!year) {
+                // Si no hay año, obtener el año más reciente disponible
+                const years = await this.getYears();
+                if (years.length === 0) {
+                    throw new Error('No hay años disponibles');
                 }
-                this.setCache(cacheKey, filteredBrands);
-                return filteredBrands;
+                year = years[0].id;
             }
-
-            this.setCache(cacheKey, brands);
-            return brands;
+            
+            // Obtener el mes más reciente disponible para ese año
+            const months = await this.api.getAvailableMonths(year);
+            console.log(`📅 Meses disponibles para ${year}:`, months);
+            
+            if (!months || !months.results || months.results.length === 0) {
+                throw new Error(`No hay meses disponibles para el año ${year}`);
+            }
+            
+            const latestMonth = months.results[0].month;
+            console.log(`📅 Usando mes más reciente: ${latestMonth}`);
+            
+            // Obtener marcas para ese año y mes
+            const brands = await this.api.getBrandsForYearAndMonth(year, latestMonth);
+            console.log(`🏷️ Marcas obtenidas:`, brands);
+            
+            if (brands && brands.results) {
+                return brands.results.map(brand => ({
+                    id: brand.id,
+                    name: brand.name
+                }));
+            }
+            
+            return [];
         } catch (error) {
+            console.error('❌ Error obteniendo marcas:', error.message);
             throw new Error(`Error obteniendo marcas: ${error.message}`);
         }
     }
@@ -102,35 +114,37 @@ class InfoAutosService {
     // Obtener modelos por marca y año
     async getModels(year, brandId) {
         try {
-            const cacheKey = `models_${year}_${brandId}`;
-            if (this.isCacheValid(cacheKey)) {
-                return this.getCache(cacheKey);
-            }
-
-            // Obtener modelos de la marca
-            const models = await this.api.getModelsForBrand(brandId);
+            console.log(`🚗 Obteniendo modelos para año: ${year}, marca: ${brandId}`);
             
-            // Si se especifica un año, filtrar solo los modelos que tienen precios para ese año
-            if (year) {
-                const filteredModels = [];
-                for (const model of models) {
-                    try {
-                        const modelPrices = await this.api.getModelUsedPrices(model.codia);
-                        if (modelPrices && modelPrices.some(p => p.year === parseInt(year))) {
-                            filteredModels.push(model);
-                        }
-                    } catch (error) {
-                        // Si no se pueden obtener los precios, incluir el modelo de todas formas
-                        filteredModels.push(model);
-                    }
-                }
-                this.setCache(cacheKey, filteredModels);
-                return filteredModels;
+            if (!year || !brandId) {
+                throw new Error('Se requiere año y marca para obtener modelos');
             }
-
-            this.setCache(cacheKey, models);
-            return models;
+            
+            // Obtener el mes más reciente disponible para ese año
+            const months = await this.api.getAvailableMonths(year);
+            if (!months || !months.results || months.results.length === 0) {
+                throw new Error(`No hay meses disponibles para el año ${year}`);
+            }
+            
+            const latestMonth = months.results[0].month;
+            console.log(`📅 Usando mes más reciente: ${latestMonth}`);
+            
+            // Obtener modelos para esa marca, año y mes
+            const models = await this.api.getModelsForBrand(year, latestMonth, brandId);
+            console.log(`🚗 Modelos obtenidos:`, models);
+            
+            if (models && models.results) {
+                return models.results.map(model => ({
+                    id: model.codia,
+                    name: model.name,
+                    brand: model.brand,
+                    group: model.group
+                }));
+            }
+            
+            return [];
         } catch (error) {
+            console.error('❌ Error obteniendo modelos:', error.message);
             throw new Error(`Error obteniendo modelos: ${error.message}`);
         }
     }
@@ -138,55 +152,68 @@ class InfoAutosService {
     // Obtener versiones (en Info Autos, las versiones son modelos específicos)
     async getVersions(year, brandId, modelId) {
         try {
-            const cacheKey = `versions_${year}_${brandId}_${modelId}`;
-            if (this.isCacheValid(cacheKey)) {
-                return this.getCache(cacheKey);
-            }
-
-            // En Info Autos, las versiones son modelos específicos
-            // Podemos obtener características técnicas del modelo para simular versiones
-            const model = await this.api.getModelByCodia(modelId);
-            const features = await this.api.getModelFeatures(modelId);
+            console.log(`🔧 Obteniendo versiones para modelo: ${modelId}`);
             
-            // Crear versiones basadas en características técnicas
-            const versions = [];
-            if (features && features.length > 0) {
-                // Agrupar por categoría de característica
-                const categories = {};
-                features.forEach(feature => {
-                    if (!categories[feature.category_name]) {
-                        categories[feature.category_name] = [];
-                    }
-                    categories[feature.category_name].push(feature);
-                });
-
-                // Crear versiones basadas en las características más relevantes
-                Object.keys(categories).forEach(category => {
-                    if (categories[category].length > 1) {
-                        categories[category].forEach(feature => {
+            if (!year || !brandId || !modelId) {
+                throw new Error('Se requiere año, marca y modelo para obtener versiones');
+            }
+            
+            // Obtener el mes más reciente disponible para ese año
+            const months = await this.api.getAvailableMonths(year);
+            if (!months || !months.results || months.results.length === 0) {
+                throw new Error(`No hay meses disponibles para el año ${year}`);
+            }
+            
+            const latestMonth = months.results[0].month;
+            
+            // Obtener características del modelo para simular versiones
+            const features = await this.api.getModelFeatures(year, latestMonth, modelId);
+            console.log(`🔧 Características obtenidas:`, features);
+            
+            if (features && features.results) {
+                // Simular versiones basadas en características
+                const versions = [];
+                features.results.forEach(feature => {
+                    if (feature.choices && feature.choices.length > 0) {
+                        feature.choices.forEach(choice => {
                             versions.push({
-                                id: `${modelId}_${feature.id}`,
-                                name: `${feature.description}`,
-                                category: category
+                                id: `${feature.id}_${choice.id}`,
+                                name: `${feature.name}: ${choice.name}`,
+                                feature: feature.name,
+                                value: choice.name
                             });
                         });
                     }
                 });
+                
+                // Si no hay características con opciones, crear una versión genérica
+                if (versions.length === 0) {
+                    versions.push({
+                        id: 'default',
+                        name: 'Versión estándar',
+                        feature: 'Versión',
+                        value: 'Estándar'
+                    });
+                }
+                
+                return versions;
             }
-
-            // Si no hay características, crear una versión básica
-            if (versions.length === 0) {
-                versions.push({
-                    id: `${modelId}_basic`,
-                    name: 'Versión Básica',
-                    category: 'General'
-                });
-            }
-
-            this.setCache(cacheKey, versions);
-            return versions;
+            
+            return [{
+                id: 'default',
+                name: 'Versión estándar',
+                feature: 'Versión',
+                value: 'Estándar'
+            }];
         } catch (error) {
-            throw new Error(`Error obteniendo versiones: ${error.message}`);
+            console.error('❌ Error obteniendo versiones:', error.message);
+            // Retornar versión por defecto en caso de error
+            return [{
+                id: 'default',
+                name: 'Versión estándar',
+                feature: 'Versión',
+                value: 'Estándar'
+            }];
         }
     }
 
