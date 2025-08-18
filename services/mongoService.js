@@ -67,115 +67,72 @@ class MongoService {
     }
   }
 
-  async getAllFormEntries(limit = 100, skip = 0) {
+  async getFormEntriesWithPagination(page = 1, limit = 100) {
     await this.connect();
     
     try {
-      const entries = await FormEntry.find()
-        .sort({ fecha: -1 })
-        .limit(limit)
-        .skip(skip);
+      const skip = (parseInt(page) - 1) * parseInt(limit);
       
-      return entries;
-    } catch (error) {
-      console.error('❌ Error obteniendo entradas de MongoDB:', error);
-      throw error;
-    }
-  }
-
-  async getFormEntriesByDateRange(startDate, endDate) {
-    await this.connect();
-    
-    try {
-      const entries = await FormEntry.find({
-        fecha: {
-          $gte: startDate,
-          $lte: endDate
-        }
-      }).sort({ fecha: -1 });
-      
-      return entries;
-    } catch (error) {
-      console.error('❌ Error obteniendo entradas por rango de fecha:', error);
-      throw error;
-    }
-  }
-
-  async getFormEntriesByBrand(brand) {
-    await this.connect();
-    
-    try {
-      const entries = await FormEntry.find({
-        marca: { $regex: brand, $options: 'i' }
-      }).sort({ fecha: -1 });
-      
-      return entries;
-    } catch (error) {
-      console.error('❌ Error obteniendo entradas por marca:', error);
-      throw error;
-    }
-  }
-
-  async getStats() {
-    await this.connect();
-    
-    try {
+      // Contar total de registros
       const total = await FormEntry.countDocuments();
       
+      // Obtener registros paginados
+      const entries = await FormEntry.find()
+        .sort({ fecha: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
+      
+      return {
+        entries,
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit))
+      };
+    } catch (error) {
+      console.error('❌ Error obteniendo entradas paginadas de MongoDB:', error);
+      throw error;
+    }
+  }
+
+  async getDashboardStats() {
+    await this.connect();
+    
+    try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayCount = await FormEntry.countDocuments({
+      
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay());
+      
+      // Contar registros totales
+      const totalRegistros = await FormEntry.countDocuments();
+      
+      // Contar registros de hoy
+      const registrosHoy = await FormEntry.countDocuments({
         fecha: { $gte: today }
       });
       
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekCount = await FormEntry.countDocuments({
-        fecha: { $gte: weekAgo }
+      // Contar registros de esta semana
+      const registrosEstaSemana = await FormEntry.countDocuments({
+        fecha: { $gte: startOfWeek }
       });
       
-      const avgKm = await FormEntry.aggregate([
-        { $group: { _id: null, avgKm: { $avg: '$km' } } }
+      // Calcular promedio de kilómetros
+      const kmStats = await FormEntry.aggregate([
+        { $group: { _id: null, promedioKm: { $avg: '$km' } } }
       ]);
       
+      const promedioKm = kmStats.length > 0 ? Math.round(kmStats[0].promedioKm) : 0;
+      
       return {
-        total,
-        hoy: todayCount,
-        estaSemana: weekCount,
-        promedioKm: avgKm.length > 0 ? Math.round(avgKm[0].avgKm / 1000 * 10) / 10 + 'K' : '0K'
+        totalRegistros,
+        registrosHoy,
+        registrosEstaSemana,
+        promedioKm
       };
     } catch (error) {
-      console.error('❌ Error obteniendo estadísticas:', error);
-      throw error;
-    }
-  }
-
-  async updateFormEntry(id, updateData) {
-    await this.connect();
-    
-    try {
-      const updatedEntry = await FormEntry.findByIdAndUpdate(
-        id,
-        { ...updateData, updatedAt: new Date() },
-        { new: true }
-      );
-      
-      return updatedEntry;
-    } catch (error) {
-      console.error('❌ Error actualizando entrada en MongoDB:', error);
-      throw error;
-    }
-  }
-
-  async deleteFormEntry(id) {
-    await this.connect();
-    
-    try {
-      await FormEntry.findByIdAndDelete(id);
-      console.log('✅ Entrada eliminada de MongoDB:', id);
-      return true;
-    } catch (error) {
-      console.error('❌ Error eliminando entrada de MongoDB:', error);
+      console.error('❌ Error obteniendo estadísticas del dashboard:', error);
       throw error;
     }
   }

@@ -4,14 +4,19 @@ const MongoService = require('../services/mongoService');
 const router = express.Router();
 const mongoService = new MongoService();
 
-// GET /api/form-entries - Obtener todas las entradas con paginación
+// GET /api/form-entries - Endpoint principal con paginación básica
 router.get('/', async (req, res) => {
   try {
-    const { limit = 100, skip = 0 } = req.query;
-    const entries = await mongoService.getAllFormEntries(parseInt(limit), parseInt(skip));
+    const { page = 1, limit = 100 } = req.query;
+    
+    // Validar límites permitidos
+    const allowedLimits = [50, 100, 200, 500];
+    const validatedLimit = allowedLimits.includes(parseInt(limit)) ? parseInt(limit) : 100;
+    
+    const result = await mongoService.getFormEntriesWithPagination(parseInt(page), validatedLimit);
     
     // Formatear datos para el frontend
-    const formattedEntries = entries.map(entry => ({
+    const formattedEntries = result.entries.map(entry => ({
       fecha: entry.fecha.toISOString().split('T')[0], // YYYY-MM-DD
       ano: entry.ano,
       modelo: entry.modelo,
@@ -23,175 +28,45 @@ router.get('/', async (req, res) => {
       celular: entry.celular
     }));
     
+    // Calcular información de paginación
+    const currentPage = parseInt(page);
+    const totalPages = result.totalPages;
+    
     res.json({
       success: true,
       data: formattedEntries,
-      count: formattedEntries.length
+      pagination: {
+        page: currentPage,
+        limit: validatedLimit,
+        total: result.total,
+        totalPages: totalPages,
+        hasNext: currentPage < totalPages,
+        hasPrev: currentPage > 1
+      }
     });
   } catch (error) {
-    console.error('Error obteniendo entradas:', error);
+    console.error('Error en getFormEntries:', error);
     res.status(500).json({
       success: false,
-      error: 'Error interno del servidor'
+      message: 'Error interno del servidor'
     });
   }
 });
 
-// GET /api/form-entries/stats - Obtener estadísticas
+// GET /api/form-entries/stats - Endpoint para estadísticas del dashboard
 router.get('/stats', async (req, res) => {
   try {
-    const stats = await mongoService.getStats();
+    const stats = await mongoService.getDashboardStats();
     
     res.json({
       success: true,
       data: stats
     });
   } catch (error) {
-    console.error('Error obteniendo estadísticas:', error);
+    console.error('Error en getStats:', error);
     res.status(500).json({
       success: false,
-      error: 'Error interno del servidor'
-    });
-  }
-});
-
-// GET /api/form-entries/by-date-range - Obtener entradas por rango de fecha
-router.get('/by-date-range', async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        error: 'Se requieren startDate y endDate'
-      });
-    }
-    
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      return res.status(400).json({
-        success: false,
-        error: 'Formato de fecha inválido'
-      });
-    }
-    
-    const entries = await mongoService.getFormEntriesByDateRange(start, end);
-    
-    res.json({
-      success: true,
-      data: entries,
-      count: entries.length
-    });
-  } catch (error) {
-    console.error('Error obteniendo entradas por rango de fecha:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor'
-    });
-  }
-});
-
-// GET /api/form-entries/by-brand/:brand - Obtener entradas por marca
-router.get('/by-brand/:brand', async (req, res) => {
-  try {
-    const { brand } = req.params;
-    const entries = await mongoService.getFormEntriesByBrand(brand);
-    
-    res.json({
-      success: true,
-      data: entries,
-      count: entries.length
-    });
-  } catch (error) {
-    console.error('Error obteniendo entradas por marca:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor'
-    });
-  }
-});
-
-// GET /api/form-entries/:id - Obtener entrada específica
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    await mongoService.connect();
-    
-    const FormEntry = require('../models/FormEntry');
-    const entry = await FormEntry.findById(id);
-    
-    if (!entry) {
-      return res.status(404).json({
-        success: false,
-        error: 'Entrada no encontrada'
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: entry
-    });
-  } catch (error) {
-    console.error('Error obteniendo entrada:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor'
-    });
-  }
-});
-
-// PUT /api/form-entries/:id - Actualizar entrada
-router.put('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updateData = req.body;
-    
-    const updatedEntry = await mongoService.updateFormEntry(id, updateData);
-    
-    if (!updatedEntry) {
-      return res.status(404).json({
-        success: false,
-        error: 'Entrada no encontrada'
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: updatedEntry
-    });
-  } catch (error) {
-    console.error('Error actualizando entrada:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor'
-    });
-  }
-});
-
-// DELETE /api/form-entries/:id - Eliminar entrada
-router.delete('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await mongoService.deleteFormEntry(id);
-    
-    if (!result) {
-      return res.status(404).json({
-        success: false,
-        error: 'Entrada no encontrada'
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Entrada eliminada exitosamente'
-    });
-  } catch (error) {
-    console.error('Error eliminando entrada:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor'
+      message: 'Error interno del servidor'
     });
   }
 });
