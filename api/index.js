@@ -5,6 +5,9 @@ const infoAutosRoutes = require('./infoAutosRoutes');
 const infoAutosLocalRoutes = require('./infoAutosLocalRoutes');
 require('dotenv').config();
 
+// Inicializar servicio de sincronización automática
+const AutoSyncService = require('../services/autoSyncService');
+
 const app = express();
 
 // Configuración de CORS para permitir requests desde hubautos.com
@@ -72,9 +75,18 @@ app.use('*', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚗 HubAutos Server corriendo en puerto ${PORT}`);
   console.log(`🌐 Servidor disponible en: http://localhost:${PORT}`);
+  
+  // Inicializar servicio de sincronización automática
+  try {
+    const autoSync = new AutoSyncService();
+    await autoSync.initialize();
+    console.log('✅ Servicio de sincronización automática inicializado');
+  } catch (error) {
+    console.error('❌ Error inicializando servicio de sincronización:', error);
+  }
 });
 
 module.exports = app;
