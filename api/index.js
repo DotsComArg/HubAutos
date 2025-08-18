@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const autoQuoteRoutes = require('./autoQuoteRoutes');
 const infoAutosRoutes = require('./infoAutosRoutes');
+const infoAutosLocalRoutes = require('./infoAutosLocalRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -49,6 +50,7 @@ app.get('/', (req, res) => {
 // Rutas de la API
 app.use('/api/auto-quote', autoQuoteRoutes);
 app.use('/api/infoautos', infoAutosRoutes);
+app.use('/api/infoautos-local', infoAutosLocalRoutes);
 
 // Middleware de manejo de errores
 app.use((err, req, res, next) => {
