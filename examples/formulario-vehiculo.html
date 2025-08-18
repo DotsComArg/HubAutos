@@ -1,444 +1,751 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formulario de Vehículo - Info Autos</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #555;
-        }
-        select, input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        select:focus, input:focus {
-            outline: none;
-            border-color: #007bff;
-        }
-        select:disabled {
-            background-color: #f8f9fa;
-            cursor: not-allowed;
-        }
-        .loading {
-            color: #666;
-            font-style: italic;
-        }
-        .error {
-            color: #dc3545;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-        .success {
-            color: #28a745;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-        .btn {
-            background-color: #007bff;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-        .btn:disabled {
-            background-color: #6c757d;
-            cursor: not-allowed;
-        }
-        .vehicle-info {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 5px;
-            margin-top: 20px;
-            border-left: 4px solid #007bff;
-        }
-        .vehicle-info h3 {
-            margin-top: 0;
-            color: #333;
-        }
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #007bff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.10/build/css/intlTelInput.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.10/build/js/intlTelInput.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>🚗 Formulario de Vehículo</h1>
-        
-        <form id="vehicleForm">
-            <div class="form-group">
-                <label for="year">Año *</label>
-                <select id="year" name="year" required>
-                    <option value="">Selecciona un año</option>
-                    <option value="loading" disabled>Cargando años...</option>
-                </select>
-            </div>
 
-            <div class="form-group">
-                <label for="brand">Marca *</label>
-                <select id="brand" name="brand" required disabled>
-                    <option value="">Primero selecciona un año</option>
-                </select>
-            </div>
+<style>
+  /* Todos tus estilos actuales */
+  .wp-form-section {
+    display: none;
+  }
+  .wp-form-section.active {
+    display: block;
+  }
+  .wp-w100 {
+    width: 100%;
+  }
+  .wp-label {
+    font-weight: 600;
+    margin: 24px 0 8px 0;
+    display: block;
+    color: #232323;
+  }
+  .wp-input,
+  .wp-select {
+    width: 100%;
+    padding: 14px 12px;
+    border: 1.5px solid #ccc;
+    border-radius: 6px;
+    font-size: 1.1em;
+    margin-bottom: 18px;
+    background: #fafbfc;
+    color: #232323;
+    transition: border 0.2s, box-shadow 0.2s;
+    height: 60px;
+  }
+  .wp-input:focus,
+  .wp-select:focus {
+    border-color: #1462af;
+    box-shadow: 0 0 0 2px #1462af22;
+    outline: none;
+  }
+  .wp-btn-row {
+    margin-top: 18px;
+    display: flex;
+    gap: 12px;
+  }
+  .wp-btn {
+    background: #1462af;
+    color: #fff;
+    border: none;
+    font-size: 1.1em;
+    border-radius: 6px;
+    padding: 12px 38px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
+    box-shadow: 0 2px 8px #1462af22;
+  }
+  .wp-btn:hover {
+    background: #165fa7;
+    box-shadow: 0 4px 16px #1462af33;
+    transform: translateY(-2px) scale(1.03);
+  }
+  .wp-error {
+    color: #b70000;
+    margin: 14px 0 0 0;
+    font-size: 1.08em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffeaea;
+    border-radius: 6px;
+    padding: 8px 12px;
+    border: 1px solid #ffbdbd;
+    min-height: 32px;
+  }
+  .wp-error:empty {
+    display: none;
+  }
+  .wp-error::before {
+    content: "\26A0";
+    font-size: 1.2em;
+  }
+  #wp-success-msg {
+    display: none;
+    width: 100%;
+    margin: 18px auto 0 auto;
+    padding: 18px 24px;
+    background: #e6f9e6;
+    border-radius: 8px;
+    color: #176c2b;
+    font-size: 1.15em;
+    text-align: center;
+    box-shadow: 0 2px 10px #0001;
+    border: 1.5px solid #7edc8a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+  }
+  #wp-success-msg.show {
+    display: flex !important;
+  }
+  #wp-success-msg:before {
+    content: "\2714";
+    font-size: 1.4em;
+    color: #1e9c3c;
+  }
+  .wp-phone-box {
+    display: flex;
+    align-items: center;
+  }
+  .wp-form-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 4px solid #e8e8e8;
+    background: #f4f8fb;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+  }
+  .wp-form-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 1.2em;
+    color: #333;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 4px solid transparent;
+    transition: border 0.25s, color 0.18s, background 0.18s;
+    background: none;
+    letter-spacing: 0.01em;
+  }
+  .wp-form-tab.active {
+    color: #1462af;
+    border-bottom: 4px solid #1462af;
+    background: #f8fafc;
+    font-weight: 700;
+  }
+  form#form-cotiza-auto {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 auto;
+    background: #f7fbff;
+    border-radius: 14px;
+    box-shadow: 0 2px 16px #0002;
+    padding: 32px 24px;
+    border: 1.5px solid #e3eaf2;
+  }
 
-            <div class="form-group">
-                <label for="model">Modelo *</label>
-                <select id="model" name="model" required disabled>
-                    <option value="">Primero selecciona una marca</option>
-                </select>
-            </div>
+  /* Select2 Styles - Arreglado para que se vean las letras y placeholders */
+  .select2-container--default .select2-selection--single {
+    background: #fafbfc !important;
+    border: 1.5px solid #ccc !important;
+    border-radius: 6px !important;
+    height: 58px !important;
+    min-height: 50px !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #232323 !important;
+    font-size: 1.1em !important;
+    line-height: 1.4 !important;
+    padding: 8px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+  /* Arreglar placeholder específicamente */
+  .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: #999 !important;
+    font-size: 1.1em !important;
+    line-height: 1.4 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 58px !important;
+    right: 10px !important;
+    top: 0 !important;
+  }
+  .select2-container {
+    width: 100% !important;
+    margin-bottom: 18px !important;
+  }
+  
+  /* Arreglar dropdown de Select2 */
+  .select2-container .select2-dropdown {
+    background: #fff !important;
+    border: 1.5px solid #1462af22 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 2px 10px #0001 !important;
+    padding: 0 !important;
+    font-size: 1.1em !important;
+  }
+  .select2-container .select2-results__option {
+    color: #232323 !important;
+    padding: 12px !important;
+    font-size: 1.05em !important;
+    border-radius: 3px !important;
+    line-height: 1.3 !important;
+  }
+  .select2-container .select2-results__option--highlighted {
+    background: #e6f3ff !important;
+    color: #1462af !important;
+  }
 
-            <div class="form-group">
-                <label for="version">Versión *</label>
-                <select id="version" name="version" required disabled>
-                    <option value="">Primero selecciona un modelo</option>
-                </select>
-            </div>
+  /* Estilo para mostrar el estado del envío a ambos servidores */
+  .wp-loading {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 1em;
+    color: #1462af;
+  }
+  .wp-loading.show {
+    display: flex;
+  }
+  .wp-loading::before {
+    content: "⏳";
+    font-size: 1.2em;
+  }
 
-            <div class="form-group">
-                <label for="fullName">Nombre Completo *</label>
-                <input type="text" id="fullName" name="fullName" required placeholder="Ingresa tu nombre completo">
-            </div>
+  /* Estilos para campos deshabilitados */
+  .wp-select:disabled,
+  .wp-input:disabled {
+    background: #f0f0f0 !important;
+    cursor: not-allowed !important;
+    opacity: 0.7;
+  }
 
-            <div class="form-group">
-                <label for="phone">Teléfono *</label>
-                <input type="tel" id="phone" name="phone" required placeholder="Ingresa tu teléfono">
-            </div>
+  /* Estilos para loading */
+  .wp-loading-field {
+    color: #666;
+    font-style: italic;
+  }
+</style>
 
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder="Ingresa tu email">
-            </div>
+<form id="form-cotiza-auto" autocomplete="off">
+  <div class="wp-form-tabs">
+    <div class="wp-form-tab active" data-step="1">Detalles del Vehículo</div>
+    <div class="wp-form-tab" data-step="2">Estado y Ubicación del Vehículo</div>
+    <div class="wp-form-tab" data-step="3">Información de Contacto</div>
+  </div>
 
-            <button type="submit" class="btn" id="submitBtn">
-                <span id="submitText">Enviar Cotización</span>
-                <span id="submitSpinner" class="spinner" style="display: none;"></span>
-            </button>
-        </form>
+  <!-- PASO 1 -->
+  <div class="wp-form-section active" data-step="1">
+    <label class="wp-label">Seleccioná el año de tu auto *</label>
+    <select name="year" id="year" class="wp-select" required>
+      <option value="">Seleccioná año</option>
+    </select>
 
-        <div id="vehicleInfo" class="vehicle-info" style="display: none;">
-            <h3>📋 Información del Vehículo Seleccionado</h3>
-            <div id="vehicleDetails"></div>
-        </div>
+    <label class="wp-label">Seleccioná la marca de tu auto *</label>
+    <select name="brand" id="brand" class="wp-select" required disabled>
+      <option value="">Primero seleccioná un año</option>
+    </select>
+
+    <label class="wp-label">Seleccioná el modelo de tu auto *</label>
+    <select name="model" id="model" class="wp-select" required disabled>
+      <option value="">Primero seleccioná una marca</option>
+    </select>
+
+    <label class="wp-label">Seleccioná la versión de tu auto *</label>
+    <select name="version" id="version" class="wp-select" required disabled>
+      <option value="">Primero seleccioná un modelo</option>
+    </select>
+
+    <div class="wp-btn-row">
+      <button type="button" class="wp-btn" id="wp-next-1">Siguiente</button>
+    </div>
+    <div class="wp-error"></div>
+  </div>
+
+  <!-- PASO 2 -->
+  <div class="wp-form-section" data-step="2">
+    <label class="wp-label">Ingresá el kilometraje *</label>
+    <input name="km" class="wp-input" maxlength="7" inputmode="numeric" pattern="[0-9]+" placeholder="Solo números" required />
+
+    <label class="wp-label">¿En qué código postal está tu auto? *</label>
+    <input name="postal" class="wp-input" maxlength="5" pattern="[0-9]{4,5}" placeholder="Ej: 1406" required />
+
+    <div class="wp-btn-row">
+      <button type="button" class="wp-btn" id="wp-back-2">Volver</button>
+      <button type="button" class="wp-btn" id="wp-next-2">Siguiente</button>
+    </div>
+    <div class="wp-error"></div>
+  </div>
+
+  <!-- PASO 3 -->
+  <div class="wp-form-section" data-step="3">
+    <label class="wp-label">Ingresa tu nombre *</label>
+    <input name="name" class="wp-input" required autocomplete="name" />
+
+    <label class="wp-label">Ingresa tu teléfono *</label>
+    <div class="wp-phone-box">
+      <input name="phone" id="phone" class="wp-input" maxlength="16" inputmode="tel" placeholder="011 15-2345-6789" required autocomplete="tel" />
     </div>
 
-    <script>
-        // Configuración de la API
-        const API_BASE_URL = 'http://localhost:3000/api/infoautos';
-        
-        // Elementos del DOM
-        const yearSelect = document.getElementById('year');
-        const brandSelect = document.getElementById('brand');
-        const modelSelect = document.getElementById('model');
-        const versionSelect = document.getElementById('version');
-        const vehicleInfo = document.getElementById('vehicleInfo');
-        const vehicleDetails = document.getElementById('vehicleDetails');
-        const submitBtn = document.getElementById('submitBtn');
-        const submitText = document.getElementById('submitText');
-        const submitSpinner = document.getElementById('submitSpinner');
+    <label class="wp-label">Ingresa tu correo electrónico *</label>
+    <input name="email" class="wp-input" type="email" required autocomplete="email"/>
 
-        // Estado del formulario
-        let selectedYear = null;
-        let selectedBrand = null;
-        let selectedModel = null;
-        let selectedVersion = null;
+    <div class="wp-btn-row">
+      <button type="button" class="wp-btn" id="wp-back-3">Volver</button>
+      <button type="submit" class="wp-btn">Enviar</button>
+    </div>
+    <div class="wp-loading">Enviando datos...</div>
+    <div class="wp-error"></div>
+  </div>
+</form>
 
-        // Inicializar el formulario
-        async function initializeForm() {
-            try {
-                await loadYears();
-            } catch (error) {
-                console.error('Error inicializando formulario:', error);
-                showError('Error al cargar los años. Por favor, recarga la página.');
-            }
-        }
+<div id="wp-success-msg" style="display: none;"></div>
 
-        // Cargar años
-        async function loadYears() {
-            try {
-                yearSelect.innerHTML = '<option value="">Selecciona un año</option>';
-                
-                const response = await fetch(`${API_BASE_URL}/years`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    data.data.forEach(year => {
-                        const yearValue = year.year || year;
-                        const option = document.createElement('option');
-                        option.value = yearValue;
-                        option.textContent = yearValue;
-                        yearSelect.appendChild(option);
-                    });
-                } else {
-                    throw new Error(data.error || 'Error cargando años');
-                }
-            } catch (error) {
-                throw new Error(`Error cargando años: ${error.message}`);
-            }
-        }
+<script>
+// ===========================================
+// CONFIGURACIÓN - URLs DE TU API
+// ===========================================
 
-        // Cargar marcas
-        async function loadBrands(year) {
-            try {
-                brandSelect.innerHTML = '<option value="">Cargando marcas...</option>';
-                brandSelect.disabled = true;
-                
-                const response = await fetch(`${API_BASE_URL}/brands/${year}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    brandSelect.innerHTML = '<option value="">Selecciona una marca</option>';
-                    data.data.forEach(brand => {
-                        const option = document.createElement('option');
-                        option.value = brand.id;
-                        option.textContent = brand.name;
-                        brandSelect.appendChild(option);
-                    });
-                    brandSelect.disabled = false;
-                } else {
-                    throw new Error(data.error || 'Error cargando marcas');
-                }
-            } catch (error) {
-                brandSelect.innerHTML = '<option value="">Error cargando marcas</option>';
-                throw new Error(`Error cargando marcas: ${error.message}`);
-            }
-        }
+// URL del backend existente
+const BACKEND_URL = "https://testapi.dotscomagency.com/api/auto-quote";
 
-        // Cargar modelos
-        async function loadModels(year, brandId) {
-            try {
-                modelSelect.innerHTML = '<option value="">Cargando modelos...</option>';
-                modelSelect.disabled = true;
-                
-                const response = await fetch(`${API_BASE_URL}/models/${year}/${brandId}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    modelSelect.innerHTML = '<option value="">Selecciona un modelo</option>';
-                    data.data.forEach(model => {
-                        const option = document.createElement('option');
-                        option.value = model.id;
-                        option.textContent = model.name;
-                        modelSelect.appendChild(option);
-                    });
-                    modelSelect.disabled = false;
-                } else {
-                    throw new Error(data.error || 'Error cargando modelos');
-                }
-            } catch (error) {
-                modelSelect.innerHTML = '<option value="">Error cargando modelos</option>';
-                throw new Error(`Error cargando modelos: ${error.message}`);
-            }
-        }
+// URL de la API de Info Autos
+const INFOAUTOS_API_URL = "https://testapi.dotscomagency.com/api/infoautos";
 
-        // Cargar versiones
-        async function loadVersions(year, brandId, modelId) {
-            try {
-                versionSelect.innerHTML = '<option value="">Cargando versiones...</option>';
-                versionSelect.disabled = true;
-                
-                const response = await fetch(`${API_BASE_URL}/versions/${year}/${brandId}/${modelId}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    versionSelect.innerHTML = '<option value="">Selecciona una versión</option>';
-                    data.data.forEach(version => {
-                        const option = document.createElement('option');
-                        option.value = version.id;
-                        option.textContent = version.name;
-                        versionSelect.appendChild(option);
-                    });
-                    versionSelect.disabled = false;
-                } else {
-                    throw new Error(data.error || 'Error cargando versiones');
-                }
-            } catch (error) {
-                versionSelect.innerHTML = '<option value="">Error cargando versiones</option>';
-                throw new Error(`Error cargando versiones: ${error.message}`);
-            }
-        }
+// ===========================================
+// INICIALIZACIÓN DEL FORMULARIO
+// ===========================================
+const form = document.getElementById("form-cotiza-auto");
+const $ = q => form.querySelector(q);
+let iti = null;
 
-        // Mostrar información del vehículo
-        function showVehicleInfo() {
-            if (selectedYear && selectedBrand && selectedModel && selectedVersion) {
-                vehicleDetails.innerHTML = `
-                    <p><strong>Año:</strong> ${selectedYear}</p>
-                    <p><strong>Marca:</strong> ${selectedBrand}</p>
-                    <p><strong>Modelo:</strong> ${selectedModel}</p>
-                    <p><strong>Versión:</strong> ${selectedVersion}</p>
-                `;
-                vehicleInfo.style.display = 'block';
-            }
-        }
+// Cache para los datos de Info Autos
+const cache = new Map();
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos
 
-        // Event listeners
-        yearSelect.addEventListener('change', async (e) => {
-            const year = e.target.value;
-            if (year) {
-                selectedYear = year;
-                selectedBrand = null;
-                selectedModel = null;
-                selectedVersion = null;
-                
-                // Resetear selects dependientes
-                brandSelect.innerHTML = '<option value="">Selecciona una marca</option>';
-                brandSelect.disabled = false;
-                modelSelect.innerHTML = '<option value="">Primero selecciona una marca</option>';
-                modelSelect.disabled = true;
-                versionSelect.innerHTML = '<option value="">Primero selecciona un modelo</option>';
-                versionSelect.disabled = true;
-                
-                try {
-                    await loadBrands(year);
-                } catch (error) {
-                    console.error('Error cargando marcas:', error);
-                }
-                
-                vehicleInfo.style.display = 'none';
-            }
-        });
+// ===========================================
+// FUNCIONES DE INFO AUTOS
+// ===========================================
 
-        brandSelect.addEventListener('change', async (e) => {
-            const brandId = e.target.value;
-            if (brandId) {
-                selectedBrand = brandSelect.options[brandSelect.selectedIndex].textContent;
-                selectedModel = null;
-                selectedVersion = null;
-                
-                // Resetear selects dependientes
-                modelSelect.innerHTML = '<option value="">Selecciona un modelo</option>';
-                modelSelect.disabled = false;
-                versionSelect.innerHTML = '<option value="">Primero selecciona un modelo</option>';
-                versionSelect.disabled = true;
-                
-                try {
-                    await loadModels(selectedYear, brandId);
-                } catch (error) {
-                    console.error('Error cargando modelos:', error);
-                }
-                
-                vehicleInfo.style.display = 'none';
-            }
-        });
+// Función para obtener datos de la API con cache
+async function fetchWithCache(endpoint) {
+  const cacheKey = endpoint;
+  
+  // Verificar cache
+  if (cache.has(cacheKey)) {
+    const cached = cache.get(cacheKey);
+    if (Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data;
+    }
+  }
 
-        modelSelect.addEventListener('change', async (e) => {
-            const modelId = e.target.value;
-            if (modelId) {
-                selectedModel = modelSelect.options[modelSelect.selectedIndex].textContent;
-                selectedVersion = null;
-                
-                // Resetear select de versiones
-                versionSelect.innerHTML = '<option value="">Selecciona una versión</option>';
-                versionSelect.disabled = false;
-                
-                try {
-                    await loadVersions(selectedYear, brandSelect.value, modelId);
-                } catch (error) {
-                    console.error('Error cargando versiones:', error);
-                }
-                
-                vehicleInfo.style.display = 'none';
-            }
-        });
+  try {
+    const response = await fetch(`${INFOAUTOS_API_URL}${endpoint}`);
+    const data = await response.json();
+    
+    if (data.success) {
+      // Guardar en cache
+      cache.set(cacheKey, {
+        data: data.data,
+        timestamp: Date.now()
+      });
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Error en la respuesta de la API');
+    }
+  } catch (error) {
+    console.error(`Error en API call a ${endpoint}:`, error);
+    throw error;
+  }
+}
 
-        versionSelect.addEventListener('change', (e) => {
-            const versionId = e.target.value;
-            if (versionId) {
-                selectedVersion = versionSelect.options[versionSelect.selectedIndex].textContent;
-                showVehicleInfo();
-            }
-        });
+// Función para poblar un select
+function populateSelect(selectElement, data, placeholder, disabled = false) {
+  selectElement.innerHTML = '';
+  
+  // Agregar placeholder
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = '';
+  placeholderOption.textContent = placeholder;
+  selectElement.appendChild(placeholderOption);
 
-        // Manejo del formulario
-        document.getElementById('vehicleForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            if (!selectedYear || !selectedBrand || !selectedModel || !selectedVersion) {
-                alert('Por favor, completa todos los campos del vehículo');
-                return;
-            }
-            
-            // Mostrar spinner
-            submitBtn.disabled = true;
-            submitText.style.display = 'none';
-            submitSpinner.style.display = 'inline-block';
-            
-            try {
-                // Aquí puedes enviar los datos a tu backend
-                const formData = {
-                    year: selectedYear,
-                    brand: selectedBrand,
-                    model: selectedModel,
-                    version: selectedVersion,
-                    fullName: document.getElementById('fullName').value,
-                    phone: document.getElementById('phone').value,
-                    email: document.getElementById('email').value
-                };
-                
-                console.log('Datos del formulario:', formData);
-                
-                // Simular envío (reemplaza con tu lógica real)
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                alert('¡Formulario enviado exitosamente!');
-                
-            } catch (error) {
-                console.error('Error enviando formulario:', error);
-                alert('Error al enviar el formulario. Por favor, intenta nuevamente.');
-            } finally {
-                // Ocultar spinner
-                submitBtn.disabled = false;
-                submitText.style.display = 'inline';
-                submitSpinner.style.display = 'none';
-            }
-        });
+  // Agregar opciones
+  data.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.id;
+    option.textContent = item.name;
+    selectElement.appendChild(option);
+  });
 
-        // Inicializar formulario al cargar la página
-        document.addEventListener('DOMContentLoaded', initializeForm);
-    </script>
+  selectElement.disabled = disabled;
+}
+
+// Función para mostrar loading en un select
+function showLoading(selectElement, message) {
+  selectElement.innerHTML = '';
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = message;
+  option.disabled = true;
+  selectElement.appendChild(option);
+  selectElement.disabled = true;
+}
+
+// Función para mostrar error en un select
+function showError(selectElement, message) {
+  selectElement.innerHTML = '';
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = message;
+  option.disabled = true;
+  selectElement.appendChild(option);
+  selectElement.disabled = true;
+}
+
+// Función para resetear un select
+function resetSelect(selectElement, placeholder, disabled = true) {
+  selectElement.innerHTML = '';
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = placeholder;
+  option.disabled = true;
+  selectElement.appendChild(option);
+  selectElement.disabled = disabled;
+}
+
+// ===========================================
+// INICIALIZACIÓN DE INFO AUTOS
+// ===========================================
+
+// Cargar años al inicializar
+async function loadYears() {
+  try {
+    showLoading($('#year'), 'Cargando años...');
+    const years = await fetchWithCache('/years');
+    populateSelect($('#year'), years, 'Seleccioná año');
+    
+    // Inicializar Select2 para el año
+    $('#year').select2({ width: '100%', placeholder: "Seleccioná año" });
+    
+    console.log('✅ Años cargados:', years.length);
+  } catch (error) {
+    showError($('#year'), 'Error cargando años');
+    console.error('Error cargando años:', error);
+  }
+}
+
+// Cargar marcas cuando se selecciona un año
+async function loadBrands(year) {
+  try {
+    // Resetear selects dependientes
+    resetSelect($('#brand'), 'Seleccioná marca');
+    resetSelect($('#model'), 'Primero seleccioná una marca');
+    resetSelect($('#version'), 'Primero seleccioná un modelo');
+
+    // Habilitar select de marcas
+    $('#brand').disabled = false;
+
+    // Cargar marcas
+    showLoading($('#brand'), 'Cargando marcas...');
+    const brands = await fetchWithCache(`/brands/${year}`);
+    populateSelect($('#brand'), brands, 'Seleccioná marca');
+    
+    // Inicializar Select2 para la marca
+    $('#brand').select2({ width: '100%', placeholder: "Seleccioná marca" });
+    
+    console.log(`✅ Marcas cargadas para año ${year}:`, brands.length);
+  } catch (error) {
+    showError($('#brand'), 'Error cargando marcas');
+    console.error('Error cargando marcas:', error);
+  }
+}
+
+// Cargar modelos cuando se selecciona una marca
+async function loadModels(year, brandId) {
+  try {
+    // Resetear selects dependientes
+    resetSelect($('#model'), 'Seleccioná modelo');
+    resetSelect($('#version'), 'Primero seleccioná un modelo');
+
+    // Habilitar select de modelos
+    $('#model').disabled = false;
+
+    // Cargar modelos
+    showLoading($('#model'), 'Cargando modelos...');
+    const models = await fetchWithCache(`/models/${year}/${brandId}`);
+    populateSelect($('#model'), models, 'Seleccioná modelo');
+    
+    // Inicializar Select2 para el modelo
+    $('#model').select2({ width: '100%', placeholder: "Seleccioná modelo" });
+    
+    console.log(`✅ Modelos cargados para marca ${brandId}:`, models.length);
+  } catch (error) {
+    showError($('#model'), 'Error cargando modelos');
+    console.error('Error cargando modelos:', error);
+  }
+}
+
+// Cargar versiones cuando se selecciona un modelo
+async function loadVersions(year, brandId, modelId) {
+  try {
+    // Resetear select de versiones
+    resetSelect($('#version'), 'Seleccioná versión');
+
+    // Habilitar select de versiones
+    $('#version').disabled = false;
+
+    // Cargar versiones
+    showLoading($('#version'), 'Cargando versiones...');
+    const versions = await fetchWithCache(`/versions/${year}/${brandId}/${modelId}`);
+    populateSelect($('#version'), versions, 'Seleccioná versión');
+    
+    // Inicializar Select2 para la versión
+    $('#version').select2({ width: '100%', placeholder: "Seleccioná versión" });
+    
+    console.log(`✅ Versiones cargadas para modelo ${modelId}:`, versions.length);
+  } catch (error) {
+    showError($('#version'), 'Error cargando versiones');
+    console.error('Error cargando versiones:', error);
+  }
+}
+
+// ===========================================
+// INICIALIZACIÓN DEL FORMULARIO
+// ===========================================
+
+// ==== Inicializar formulario ====
+document.addEventListener('DOMContentLoaded', function() {
+  // Cargar años al inicializar
+  loadYears();
+  
+  // Event listeners para los selects usando addEventListener en lugar de jQuery
+  document.getElementById('year').addEventListener('change', async function() {
+    const year = this.value;
+    if (year) {
+      await loadBrands(year);
+    }
+  });
+
+  document.getElementById('brand').addEventListener('change', async function() {
+    const brandId = this.value;
+    const year = document.getElementById('year').value;
+    if (brandId && year) {
+      await loadModels(year, brandId);
+    }
+  });
+
+  document.getElementById('model').addEventListener('change', async function() {
+    const modelId = this.value;
+    const year = document.getElementById('year').value;
+    const brandId = document.getElementById('brand').value;
+    if (modelId && year && brandId) {
+      await loadVersions(year, brandId, modelId);
+    }
+  });
+});
+
+// ==== Inicializar campo de teléfono ====
+document.addEventListener("DOMContentLoaded", function() {
+  const phoneInput = document.getElementById("phone");
+  iti = window.intlTelInput(phoneInput, {
+    initialCountry: "ar",
+    allowDropdown: false,
+    countrySearch: false,
+    strictMode: true,
+    nationalMode: true,
+    showDropdown: false,
+    utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.10/build/js/utils.js"
+  });
+  
+  phoneInput.addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '');
+  });
+});
+
+// ===========================================
+// NAVEGACIÓN MULTI-PASO
+// ===========================================
+let currentStep = 1;
+
+function goToStep(step) {
+  form.querySelectorAll('.wp-form-section').forEach(s=>s.classList.remove('active'));
+  form.querySelector(`.wp-form-section[data-step="${step}"]`).classList.add('active');
+  form.querySelectorAll('.wp-form-tab').forEach(t=>t.classList.remove('active'));
+  form.querySelector(`.wp-form-tab[data-step="${step}"]`).classList.add('active');
+  currentStep = step;
+}
+
+function showError(step, msg) {
+  form.querySelector(`.wp-form-section[data-step="${step}"] .wp-error`).textContent = msg||'';
+}
+
+function showLoading(show) {
+  const loadingEl = form.querySelector('.wp-loading');
+  if (show) {
+    loadingEl.classList.add('show');
+  } else {
+    loadingEl.classList.remove('show');
+  }
+}
+
+// Eventos de navegación
+document.getElementById('wp-next-1').onclick = function() {
+  showError(1,"");
+  if(!form.year.value || !form.brand.value || !form.model.value || !form.version.value)
+    return showError(1, "Completá todos los campos");
+  goToStep(2);
+};
+
+document.getElementById('wp-next-2').onclick = function() {
+  showError(2,"");
+  if(!form.km.value || isNaN(form.km.value) || !/^\d+$/.test(form.km.value))
+    return showError(2,"Kilometraje: solo números");
+  if(!form.postal.value || !/^[0-9]{4,5}$/.test(form.postal.value))
+    return showError(2,"Código postal inválido");
+  goToStep(3);
+};
+
+document.getElementById('wp-back-2').onclick = () => goToStep(1);
+document.getElementById('wp-back-3').onclick = () => goToStep(2);
+
+// Eventos de clic en pestañas
+form.querySelectorAll('.wp-form-tab').forEach(tab => {
+  tab.onclick = () => goToStep(+tab.dataset.step);
+});
+
+// ===========================================
+// ENVÍO DEL FORMULARIO
+// ===========================================
+form.onsubmit = async function(e) {
+  e.preventDefault();
+  showError(3,"");
+  showLoading(true);
+  
+  // Validar teléfono
+  const isValidPhone = iti && iti.isValidNumber();
+  if(!isValidPhone) {
+    showLoading(false);
+    return showError(3, "Teléfono inválido. Ingresá un número válido incluyendo código de país.");
+  }
+  
+  // Obtener datos del formulario
+  const datos = {
+    year: form.year.value,
+    brand: document.getElementById('brand').options[document.getElementById('brand').selectedIndex].text,
+    brandId: form.brand.value,
+    model: document.getElementById('model').options[document.getElementById('model').selectedIndex].text,
+    modelId: form.model.value,
+    version: document.getElementById('version').options[document.getElementById('version').selectedIndex].text,
+    versionId: form.version.value,
+    modelVersion: document.getElementById('model').options[document.getElementById('model').selectedIndex].text + " - " + document.getElementById('version').options[document.getElementById('version').selectedIndex].text,
+    km: form.km.value,
+    postal: form.postal.value,
+    name: form.name.value.trim(),
+    phone: iti.getNumber(),
+    email: form.email.value.trim()
+  };
+  
+  // Validaciones adicionales
+  if(!datos.name) {
+    showLoading(false);
+    return showError(3,"Nombre obligatorio");
+  }
+  if(!/^[^@]+@[^@]+\.[^@]+$/.test(datos.email)) {
+    showLoading(false);
+    return showError(3,"Email inválido");
+  }
+
+  try {
+    // Crear mensaje para WhatsApp PRIMERO (antes de enviar al backend)
+    const wpMsg =
+      `Hola! Quiero cotizar mi auto:\n`+
+      `Marca: ${datos.brand}\nModelo: ${datos.model}\nVersión: ${datos.version}\nAño: ${datos.year}\n`+
+      `Kilometraje: ${datos.km}\nCP: ${datos.postal}\nNombre: ${datos.name}\nTel: ${datos.phone}\nEmail: ${datos.email}`;
+    const wpURL = "https://wa.me/5491125286946?text=" + encodeURIComponent(wpMsg);
+    
+    console.log("Datos para WhatsApp:", datos);
+    console.log("URL de WhatsApp:", wpURL);
+    
+    // Enviar datos al backend
+    const response = await fetch(BACKEND_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(datos)
+    });
+    
+    showLoading(false);
+    
+    if (response.ok) {
+      console.log("✅ Datos enviados correctamente al backend");
+      
+      // Redireccionar a WhatsApp con un pequeño delay
+      setTimeout(() => {
+        console.log("🚀 Redirigiendo a WhatsApp...");
+        window.location.href = wpURL;
+      }, 500);
+      
+      // Mostrar mensaje de éxito
+      const successMsg = document.getElementById("wp-success-msg");
+      successMsg.textContent = "¡Gracias por contactar con nosotros! Te hemos redirigido a WhatsApp para completar tu consulta.";
+      successMsg.classList.add("show");
+      
+    } else {
+      console.error("❌ Error del backend:", response.status);
+      
+      // Aunque el backend falle, intentamos redireccionar a WhatsApp
+      console.log("🚀 Redirigiendo a WhatsApp a pesar del error del backend...");
+      window.location.href = wpURL;
+      
+      // Mostrar mensaje informativo
+      const successMsg = document.getElementById("wp-success-msg");
+      successMsg.textContent = "Te hemos redirigido a WhatsApp. Si tienes problemas, contactanos directamente.";
+      successMsg.classList.add("show");
+    }
+    
+  } catch (error) {
+    console.error("❌ Error completo:", error);
+    showLoading(false);
+    
+    // En caso de error, crear mensaje manual para WhatsApp
+    const wpMsg = `Hola! Quiero cotizar mi auto: ${datos.brand} ${datos.model} ${datos.version} del ${datos.year}. Mi nombre es ${datos.name}, teléfono: ${datos.phone}, email: ${datos.email}`;
+    const wpURL = "https://wa.me/5491125286946?text=" + encodeURIComponent(wpMsg);
+    
+    console.log("🚀 Redirigiendo a WhatsApp como fallback...");
+    window.location.href = wpURL;
+    
+    showError(3, "Enviamos tu consulta por WhatsApp. Si no se abrió automáticamente, contactanos directamente al +54 9 11 2528-6946");
+  }
+};
+
+// Limpiar mensaje de éxito cuando el usuario modifica el formulario
+form.addEventListener('input', function() {
+  document.getElementById("wp-success-msg").classList.remove("show");
+});
+</script>
+
 </body>
 </html>
