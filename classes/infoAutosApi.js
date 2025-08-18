@@ -67,12 +67,6 @@ class InfoAutosApi {
                 throw new Error('No se han configurado los tokens de acceso');
             }
 
-            // Verificar si el token ha expirado (solo como respaldo)
-            if (this.tokenExpiry && Date.now() > this.tokenExpiry) {
-                console.log('🔄 Token expirado, renovando como respaldo...');
-                await this.refreshAccessToken();
-            }
-
             const config = {
                 method,
                 url: `${this.baseURL}${endpoint}`,
@@ -101,9 +95,9 @@ class InfoAutosApi {
                 data: error.response?.data
             });
             
-            // Si es error 401, intentar renovar el token una sola vez
+            // Solo renovar token si es 401 y no estamos ya renovando
             if (error.response?.status === 401 && !this.isRefreshing) {
-                console.log('🔄 Error 401, renovando token como respaldo...');
+                console.log('🔄 Error 401, renovando token...');
                 try {
                     this.isRefreshing = true;
                     await this.refreshAccessToken();

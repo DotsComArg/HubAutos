@@ -74,8 +74,9 @@ class InfoAutosService {
             const brands = await this.api.getBrands();
             console.log(`🏷️ Marcas obtenidas de la API:`, brands);
             
-            if (brands && brands.results && brands.results.length > 0) {
-                return brands.results.map(brand => ({
+            // La API devuelve directamente el array de marcas, no en results
+            if (brands && Array.isArray(brands) && brands.length > 0) {
+                return brands.map(brand => ({
                     id: brand.id,
                     name: brand.name
                 }));
@@ -102,8 +103,9 @@ class InfoAutosService {
             const models = await this.api.getModelsByBrand(brandId);
             console.log(`🚗 Modelos obtenidos de la API:`, models);
             
-            if (models && models.results) {
-                return models.results.map(model => ({
+            // La API devuelve directamente el array de modelos, no en results
+            if (models && Array.isArray(models) && models.length > 0) {
+                return models.map(model => ({
                     id: model.codia,
                     name: model.name,
                     brand: model.brand,
@@ -132,10 +134,11 @@ class InfoAutosService {
             const features = await this.api.getModelFeatures(modelId);
             console.log(`🔧 Características obtenidas de la API:`, features);
             
-            if (features && features.results) {
+            // La API devuelve directamente el array de características, no en results
+            if (features && Array.isArray(features) && features.length > 0) {
                 // Simular versiones basadas en características
                 const versions = [];
-                features.results.forEach(feature => {
+                features.forEach(feature => {
                     if (feature.choices && feature.choices.length > 0) {
                         feature.choices.forEach(choice => {
                             versions.push({
