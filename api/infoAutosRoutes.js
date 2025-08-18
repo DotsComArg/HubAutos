@@ -159,6 +159,34 @@ router.get('/health', async (req, res) => {
     }
 });
 
+// Endpoint para actualizar tokens manualmente
+router.post('/update-tokens', async (req, res) => {
+    try {
+        const { accessToken, refreshToken } = req.body;
+        
+        if (!accessToken || !refreshToken) {
+            return res.status(400).json({
+                success: false,
+                error: 'Se requieren accessToken y refreshToken'
+            });
+        }
+
+        // Actualizar tokens en el servicio
+        infoAutosService.initialize(accessToken, refreshToken);
+        
+        res.json({
+            success: true,
+            message: 'Tokens actualizados correctamente'
+        });
+    } catch (error) {
+        console.error('Error actualizando tokens:', error.message);
+        res.status(500).json({
+            success: false,
+            error: `Error actualizando tokens: ${error.message}`
+        });
+    }
+});
+
 // Aplicar middleware de manejo de errores
 router.use(errorHandler);
 
