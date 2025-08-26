@@ -1,6 +1,9 @@
 class InfoAutosApi {
   constructor() {
-    this.baseUrl = 'https://api.infoauto.com.ar/cars/pub';
+    // URLs separadas según la documentación de Info Autos
+    this.dataBaseUrl = 'https://api.infoauto.com.ar/cars/pub';  // Para datos (years, brands, models, versions)
+    this.authBaseUrl = 'https://api.infoauto.com.ar/cars/auth'; // Para autenticación (login, refresh)
+    
     this.accessToken = null;
     this.refreshToken = null;
     this.tokenExpiry = null;
@@ -66,8 +69,8 @@ class InfoAutosApi {
     try {
       console.log('🔄 Refrescando access token...');
       
-      // Intentar con el endpoint estándar primero
-      let response = await fetch(`${this.baseUrl}/auth/refresh`, {
+      // Intentar con el endpoint estándar primero (URL correcta según documentación)
+      let response = await fetch(`${this.authBaseUrl}/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,7 +81,7 @@ class InfoAutosApi {
       // Si falla, intentar con el endpoint alternativo
       if (!response.ok) {
         console.log('🔄 Primer endpoint falló, probando alternativo...');
-        response = await fetch(`${this.baseUrl}/auth/token/refresh`, {
+        response = await fetch(`${this.authBaseUrl}/token/refresh`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -136,7 +139,8 @@ class InfoAutosApi {
       const headers = await this.getAuthHeaders();
       console.log(`🔑 Headers de autenticación:`, headers);
       
-      const fullUrl = `${this.baseUrl}${endpoint}`;
+      // Usar la URL de datos para las consultas de catálogo
+      const fullUrl = `${this.dataBaseUrl}${endpoint}`;
       console.log(`🌐 Llamando a: ${fullUrl}`);
       
       const response = await fetch(fullUrl, {
@@ -193,7 +197,8 @@ class InfoAutosApi {
   // Obtener años disponibles
   async getYears() {
     try {
-      const data = await this.makeRequest('/archives/years');
+      // Según la documentación, usar el endpoint correcto para años
+      const data = await this.makeRequest('/years');
       console.log('📅 Años obtenidos:', data);
       
       if (data && Array.isArray(data)) {
@@ -213,7 +218,8 @@ class InfoAutosApi {
   // Obtener marcas por año
   async getBrands(year) {
     try {
-      const data = await this.makeRequest(`/archives/years/${year}/months/1/brands`);
+      // Según la documentación, usar el endpoint correcto para marcas
+      const data = await this.makeRequest(`/years/${year}/brands`);
       console.log(`🏷️ Marcas obtenidas para año ${year}:`, data);
       
       if (data && Array.isArray(data)) {
@@ -233,7 +239,8 @@ class InfoAutosApi {
   // Obtener modelos por marca y año
   async getModels(year, brandId) {
     try {
-      const data = await this.makeRequest(`/archives/years/${year}/months/1/brands/${brandId}/models`);
+      // Según la documentación, usar el endpoint correcto para modelos
+      const data = await this.makeRequest(`/years/${year}/brands/${brandId}/models`);
       console.log(`🚗 Modelos obtenidos para marca ${brandId} año ${year}:`, data);
       
       if (data && Array.isArray(data)) {
@@ -253,7 +260,8 @@ class InfoAutosApi {
   // Obtener versiones por modelo, marca y año
   async getVersions(year, brandId, modelId) {
     try {
-      const data = await this.makeRequest(`/archives/years/${year}/months/1/brands/${brandId}/groups/${modelId}/models`);
+      // Según la documentación, usar el endpoint correcto para versiones
+      const data = await this.makeRequest(`/years/${year}/brands/${brandId}/models/${modelId}/versions`);
       console.log(`🔧 Versiones obtenidas para modelo ${modelId} marca ${brandId} año ${year}:`, data);
       
       if (data && Array.isArray(data)) {
@@ -273,7 +281,8 @@ class InfoAutosApi {
   // Verificar estado de la conexión
   async checkConnection() {
     try {
-      const data = await this.makeRequest('/archives');
+      // Según la documentación, usar el endpoint correcto para verificar conexión
+      const data = await this.makeRequest('/brands');
       return {
         success: true,
         message: 'Conexión exitosa con Info Autos',
