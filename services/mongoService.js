@@ -42,6 +42,20 @@ class MongoService {
     await this.connect();
     
     try {
+      // Verificar si ya existe un registro similar para prevenir duplicados
+      const existingEntry = await FormEntry.findOne({
+        email: data.email,
+        celular: data.phone || data.telefono || data.celular,
+        fecha: {
+          $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Últimas 24 horas
+        }
+      });
+
+      if (existingEntry) {
+        console.log('⚠️ Registro duplicado detectado, no se guardará:', existingEntry._id);
+        return existingEntry; // Retornar el existente en lugar de crear uno nuevo
+      }
+
       const formEntry = new FormEntry({
         fecha: new Date(),
         ano: parseInt(data.year) || parseInt(data.ano),

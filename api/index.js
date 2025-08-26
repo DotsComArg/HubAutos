@@ -9,6 +9,7 @@ const { processQuote } = require('../helpers/processQuote');
 const urlShortener = require('../utils/urlShortener');
 const MongoService = require('../services/mongoService');
 const formEntryRoutes = require('./formEntryRoutes');
+const infoAutosRoutes = require('./infoAutosRoutes');
 
 const { json, urlencoded } = express;
 dotenv.config();
@@ -20,6 +21,9 @@ app.use(urlencoded({ extended: true }));
 
 // Rutas de formEntrys - Backend con paginación implementado
 app.use('/api/form-entries', formEntryRoutes);
+
+// Rutas de Info Autos API
+app.use('/api/infoautos', infoAutosRoutes);
 
 const port = process.env.PORT || 3000;
 
@@ -217,30 +221,44 @@ async function processKommoLead(data) {
 
 app.post("/api/auto-quote", async (req, res) => {
   try {
-    console.log("Datos recibidos desde qstash:", req.body);
+    console.log("🚀 POST /api/auto-quote - Iniciando procesamiento");
+    console.log("📊 Datos recibidos:", JSON.stringify(req.body, null, 2));
     
     if (!req.body) {
       return res.status(400).json({ error: "No se recibieron datos" });
     }
     
+    // Verificar si ya se procesó esta solicitud (prevenir duplicados)
+    const requestId = `${req.body.email}-${req.body.phone}-${Date.now()}`;
+    console.log("🆔 ID de solicitud:", requestId);
+    
     // Guardar en Google Sheets
+    console.log("📊 Guardando en Google Sheets...");
     await addCarRow(req.body);
+    console.log("✅ Google Sheets - Completado");
     
     // Guardar en MongoDB
+    console.log("🗄️ Guardando en MongoDB...");
     const mongoService = new MongoService();
     const mongoEntry = await mongoService.saveFormEntry(req.body);
+    console.log("✅ MongoDB - Completado, ID:", mongoEntry._id);
     
     // Procesar en Kommo
+    console.log("📋 Procesando en Kommo CRM...");
     const leadId = await processKommoLead(req.body);
+    console.log("✅ Kommo CRM - Completado, Lead ID:", leadId);
+    
+    console.log("🎉 Procesamiento completado exitosamente");
     
     res.json({
       message: "Datos recibidos correctamente",
       data: req.body,
       leadId: leadId,
-      mongoId: mongoEntry._id
+      mongoId: mongoEntry._id,
+      requestId: requestId
     });
   } catch (error) {
-    console.error("Error al procesar la solicitud:", error);
+    console.error("❌ Error al procesar la solicitud:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });

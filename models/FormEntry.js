@@ -68,4 +68,14 @@ formEntrySchema.index({ marca: 1, modelo: 1 });
 formEntrySchema.index({ email: 1 });
 formEntrySchema.index({ celular: 1 });
 
+// Índice único para prevenir duplicados (email + celular + fecha en el mismo día)
+formEntrySchema.index(
+  { 
+    email: 1, 
+    celular: 1, 
+    fecha: { $dateToString: { format: "%Y-%m-%d", date: "$fecha" } }
+  }, 
+  { unique: true, name: "unique_entry_per_day" }
+);
+
 module.exports = mongoose.model('FormEntry', formEntrySchema, 'formEntrys');

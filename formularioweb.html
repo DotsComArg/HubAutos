@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.10/build/css/intlTelInput.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.10/build/js/intlTelInput.min.js"></script>
+</head>
+<body>
+
+<style>
+  /* Todos tus estilos actuales */
+  .wp-form-section {
+    display: none;
+  }
+  .wp-form-section.active {
+    display: block;
+  }
+  .wp-w100 {
+    width: 100%;
+  }
+  .wp-label {
+    font-weight: 600;
+    margin: 24px 0 8px 0;
+    display: block;
+    color: #232323;
+  }
+  .wp-input,
+  .wp-select {
+    width: 100%;
+    padding: 14px 12px;
+    border: 1.5px solid #ccc;
+    border-radius: 6px;
+    font-size: 1.1em;
+    margin-bottom: 18px;
+    background: #fafbfc;
+    color: #232323;
+    transition: border 0.2s, box-shadow 0.2s;
+    height: 60px;
+  }
+  .wp-input:focus,
+  .wp-select:focus {
+    border-color: #1462af;
+    box-shadow: 0 0 0 2px #1462af22;
+    outline: none;
+  }
+  .wp-btn-row {
+    margin-top: 18px;
+    display: flex;
+    gap: 12px;
+  }
+  .wp-btn {
+    background: #1462af;
+    color: #fff;
+    border: none;
+    font-size: 1.1em;
+    border-radius: 6px;
+    padding: 12px 38px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
+    box-shadow: 0 2px 8px #1462af22;
+  }
+  .wp-btn:hover {
+    background: #165fa7;
+    box-shadow: 0 4px 16px #1462af33;
+    transform: translateY(-2px) scale(1.03);
+  }
+  .wp-error {
+    color: #b70000;
+    margin: 14px 0 0 0;
+    font-size: 1.08em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffeaea;
+    border-radius: 6px;
+    padding: 8px 12px;
+    border: 1px solid #ffbdbd;
+    min-height: 32px;
+  }
+  .wp-error:empty {
+    display: none;
+  }
+  .wp-error::before {
+    content: "\26A0";
+    font-size: 1.2em;
+  }
+  #wp-success-msg {
+    display: none;
+    width: 100%;
+    margin: 18px auto 0 auto;
+    padding: 18px 24px;
+    background: #e6f9e6;
+    border-radius: 8px;
+    color: #176c2b;
+    font-size: 1.15em;
+    text-align: center;
+    box-shadow: 0 2px 10px #0001;
+    border: 1.5px solid #7edc8a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+  }
+  #wp-success-msg.show {
+    display: flex !important;
+  }
+  #wp-success-msg:before {
+    content: "\2714";
+    font-size: 1.4em;
+    color: #1e9c3c;
+  }
+  .wp-phone-box {
+    display: flex;
+    align-items: center;
+  }
+  .wp-form-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 4px solid #e8e8e8;
+    background: #f4f8fb;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+  }
+  .wp-form-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 1.2em;
+    color: #333;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 4px solid transparent;
+    transition: border 0.25s, color 0.18s, background 0.18s;
+    background: none;
+    letter-spacing: 0.01em;
+  }
+  .wp-form-tab.active {
+    color: #1462af;
+    border-bottom: 4px solid #1462af;
+    background: #f8fafc;
+    font-weight: 700;
+  }
+  form#form-cotiza-auto {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 auto;
+    background: #f7fbff;
+    border-radius: 14px;
+    box-shadow: 0 2px 16px #0002;
+    padding: 32px 24px;
+    border: 1.5px solid #e3eaf2;
+  }
+
+  /* Select2 Styles - Arreglado para que se vean las letras y placeholders */
+  .select2-container--default .select2-selection--single {
+    background: #fafbfc !important;
+    border: 1.5px solid #ccc !important;
+    border-radius: 6px !important;
+    height: 58px !important;
+    min-height: 50px !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #232323 !important;
+    font-size: 1.1em !important;
+    line-height: 1.4 !important;
+    padding: 8px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+  /* Arreglar placeholder específicamente */
+  .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: #999 !important;
+    font-size: 1.1em !important;
+    line-height: 1.4 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 58px !important;
+    right: 10px !important;
+    top: 0 !important;
+  }
+  .select2-container {
+    width: 100% !important;
+    margin-bottom: 18px !important;
+  }
+  
+  /* Arreglar dropdown de Select2 */
+  .select2-container .select2-dropdown {
+    background: #fff !important;
+    border: 1.5px solid #1462af22 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 2px 10px #0001 !important;
+    padding: 0 !important;
+    font-size: 1.1em !important;
+  }
+  .select2-container .select2-results__option {
+    color: #232323 !important;
+    padding: 12px !important;
+    font-size: 1.05em !important;
+    border-radius: 3px !important;
+    line-height: 1.3 !important;
+  }
+  .select2-container .select2-results__option--highlighted {
+    background: #e6f3ff !important;
+    color: #1462af !important;
+  }
+
+  /* Estilo para mostrar el estado del envío a ambos servidores */
+  .wp-loading {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 1em;
+    color: #1462af;
+  }
+  .wp-loading.show {
+    display: flex;
+  }
+  .wp-loading::before {
+    content: "⏳";
+    font-size: 1.2em;
+  }
+
+  /* Estilos para campos deshabilitados */
+  .wp-select:disabled,
+  .wp-input:disabled {
+    background: #f0f0f0 !important;
+    cursor: not-allowed !important;
+    opacity: 0.7;
+  }
+
+  /* Estilos para loading */
+  .wp-loading-field {
+    color: #666;
+    font-style: italic;
+  }
+</style>
+
+<form id="form-cotiza-auto" autocomplete="off">
+  <div class="wp-form-tabs">
+    <div class="wp-form-tab active" data-step="1">Detalles del Vehículo</div>
+    <div class="wp-form-tab" data-step="2">Estado y Ubicación del Vehículo</div>
+    <div class="wp-form-tab" data-step="3">Información de Contacto</div>
+  </div>
+
+  <!-- PASO 1 -->
+  <div class="wp-form-section active" data-step="1">
+    <label class="wp-label">Seleccioná el año de tu auto *</label>
+    <select name="year" id="year" class="wp-select" required>
+      <option value="">Seleccioná año</option>
+    </select>
+
+    <label class="wp-label">Seleccioná la marca de tu auto *</label>
+    <select name="brand" id="brand" class="wp-select" required disabled>
+      <option value="">Primero seleccioná un año</option>
+    </select>
+
+    <label class="wp-label">Seleccioná el modelo de tu auto *</label>
+    <select name="model" id="model" class="wp-select" required disabled>
+      <option value="">Primero seleccioná una marca</option>
+    </select>
+
+    <label class="wp-label">Seleccioná la versión de tu auto *</label>
+    <select name="version" id="version" class="wp-select" required disabled>
+      <option value="">Primero seleccioná un modelo</option>
+    </select>
+
+    <div class="wp-btn-row">
+      <button type="button" class="wp-btn" id="wp-next-1">Siguiente</button>
+    </div>
+    <div class="wp-error"></div>
+  </div>
+
+  <!-- PASO 2 -->
+  <div class="wp-form-section" data-step="2">
+    <label class="wp-label">Ingresá el kilometraje *</label>
+    <input name="km" class="wp-input" maxlength="7" inputmode="numeric" pattern="[0-9]+" placeholder="Solo números" required />
+
+    <label class="wp-label">¿En qué código postal está tu auto? *</label>
+    <input name="postal" class="wp-input" maxlength="5" pattern="[0-9]{4,5}" placeholder="Ej: 1406" required />
+
+    <div class="wp-btn-row">
+      <button type="button" class="wp-btn" id="wp-back-2">Volver</button>
+      <button type="button" class="wp-btn" id="wp-next-2">Siguiente</button>
+    </div>
+    <div class="wp-error"></div>
+  </div>
+
+  <!-- PASO 3 -->
+  <div class="wp-form-section" data-step="3">
+    <label class="wp-label">Ingresa tu nombre *</label>
+    <input name="name" class="wp-input" required autocomplete="name" />
+
+    <label class="wp-label">Ingresa tu teléfono *</label>
+    <div class="wp-phone-box">
+      <input name="phone" id="phone" class="wp-input" maxlength="16" inputmode="tel" placeholder="011 15-2345-6789" required autocomplete="tel" />
+    </div>
+
+    <label class="wp-label">Ingresa tu correo electrónico *</label>
+    <input name="email" class="wp-input" type="email" required autocomplete="email"/>
+
+    <div class="wp-btn-row">
+      <button type="button" class="wp-btn" id="wp-back-3">Volver</button>
+      <button type="submit" class="wp-btn">Enviar</button>
+    </div>
+    <div class="wp-loading">Enviando datos...</div>
+    <div class="wp-error"></div>
+  </div>
+</form>
+
+<div id="wp-success-msg" style="display: none;"></div>
+
+<script>
+// ===========================================
+// CONFIGURACIÓN - URLs DE TU API
+// ===========================================
+
+// URL del backend existente (Vercel)
+const BACKEND_URL = "https://testapi.dotscomagency.com/api/auto-quote";
+
+// URL de la API de Info Autos (Vercel) - NUEVA INTEGRACIÓN
+const INFOAUTOS_API_URL = "https://testapi.dotscomagency.com/api/infoautos";
+
+// ===========================================
+// INICIALIZACIÓN DEL FORMULARIO
+// ===========================================
+const form = document.getElementById("form-cotiza-auto");
+let iti = null;
+
+// Cache para los datos de Info Autos
+const cache = new Map();
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos
+
+// ===========================================
+// FUNCIONES DE INFO AUTOS
+// ===========================================
+
+// Función para obtener datos de la API con cache
+async function fetchWithCache(endpoint) {
+  const cacheKey = endpoint;
+  
+  // Verificar cache
+  if (cache.has(cacheKey)) {
+    const cached = cache.get(cacheKey);
+    if (Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data;
+    }
+  }
+
+  try {
+    const fullUrl = `${INFOAUTOS_API_URL}${endpoint}`;
+    console.log(`🌐 Llamando a: ${fullUrl}`);
+    
+    const response = await fetch(fullUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`📡 Respuesta de ${endpoint}:`, response.status, response.statusText);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log(`📡 Datos de ${endpoint}:`, data);
+    
+    if (data.success) {
+      // Guardar en cache
+      cache.set(cacheKey, {
+        data: data.data,
+        timestamp: Date.now()
+      });
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Error en la respuesta de la API');
+    }
+  } catch (error) {
+    console.error(`❌ Error en API call a ${endpoint}:`, error);
+    throw error; // Re-lanzar el error para manejarlo en las funciones de carga
+  }
+}
+
+
+
+// Función para poblar un select
+function populateSelect(selectElement, data, placeholder, disabled = false) {
+  // Destruir Select2 si ya está inicializado
+  if ($(selectElement).hasClass('select2-hidden-accessible')) {
+    $(selectElement).select2('destroy');
+  }
+  
+  selectElement.innerHTML = '';
+  
+  // Agregar placeholder
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = '';
+  placeholderOption.textContent = placeholder;
+  selectElement.appendChild(placeholderOption);
+
+  // Agregar opciones
+  data.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.id;
+    option.textContent = item.name;
+    selectElement.appendChild(option);
+  });
+
+  selectElement.disabled = disabled;
+  
+  // Inicializar Select2
+  $(selectElement).select2({ 
+    width: '100%', 
+    placeholder: placeholder,
+    allowClear: true
+  });
+}
+
+// Función para mostrar loading en un select
+function showLoading(selectElement, message) {
+  // Destruir Select2 si ya está inicializado
+  if ($(selectElement).hasClass('select2-hidden-accessible')) {
+    $(selectElement).select2('destroy');
+  }
+  
+  selectElement.innerHTML = '';
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = message;
+  option.disabled = true;
+  selectElement.appendChild(option);
+  selectElement.disabled = true;
+  
+  // Inicializar Select2
+  $(selectElement).select2({ 
+    width: '100%', 
+    placeholder: message,
+    allowClear: true
+  });
+}
+
+// Función para mostrar error en un select
+function showError(selectElement, message) {
+  // Destruir Select2 si ya está inicializado
+  if ($(selectElement).hasClass('select2-hidden-accessible')) {
+    $(selectElement).select2('destroy');
+  }
+  
+  selectElement.innerHTML = '';
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = message;
+  option.disabled = true;
+  selectElement.appendChild(option);
+  selectElement.disabled = true;
+  
+  // Inicializar Select2
+  $(selectElement).select2({ 
+    width: '100%', 
+    placeholder: message,
+    allowClear: true
+  });
+}
+
+// Función para resetear un select
+function resetSelect(selectElement, placeholder, disabled = true) {
+  // Destruir Select2 si ya está inicializado
+  if ($(selectElement).hasClass('select2-hidden-accessible')) {
+    $(selectElement).select2('destroy');
+  }
+  
+  selectElement.innerHTML = '';
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = placeholder;
+  option.disabled = true;
+  selectElement.appendChild(option);
+  selectElement.disabled = disabled;
+  
+  // Inicializar Select2
+  $(selectElement).select2({ 
+    width: '100%', 
+    placeholder: placeholder,
+    allowClear: true
+  });
+}
+
+// ===========================================
+// INICIALIZACIÓN DE INFO AUTOS
+// ===========================================
+
+// Cargar años al inicializar
+async function loadYears() {
+  try {
+    showLoading(document.getElementById('year'), 'Cargando años...');
+    const years = await fetchWithCache('/years');
+    populateSelect(document.getElementById('year'), years, 'Seleccioná año');
+    console.log('✅ Años cargados:', years.length);
+  } catch (error) {
+    showError(document.getElementById('year'), 'Error cargando años');
+    console.error('Error cargando años:', error);
+  }
+}
+
+// Cargar marcas cuando se selecciona un año
+async function loadBrands(year) {
+  try {
+    // Resetear selects dependientes
+    resetSelect(document.getElementById('brand'), 'Seleccioná marca');
+    resetSelect(document.getElementById('model'), 'Primero seleccioná una marca');
+    resetSelect(document.getElementById('version'), 'Primero seleccioná un modelo');
+
+    // Cargar marcas
+    showLoading(document.getElementById('brand'), 'Cargando marcas...');
+    const brands = await fetchWithCache(`/brands/${year}`);
+    populateSelect(document.getElementById('brand'), brands, 'Seleccioná marca');
+    console.log(`✅ Marcas cargadas para año ${year}:`, brands.length);
+  } catch (error) {
+    showError(document.getElementById('brand'), 'Error cargando marcas');
+    console.error('Error cargando marcas:', error);
+  }
+}
+
+// Cargar modelos cuando se selecciona una marca
+async function loadModels(year, brandId) {
+  try {
+    // Resetear selects dependientes
+    resetSelect(document.getElementById('model'), 'Seleccioná modelo');
+    resetSelect(document.getElementById('version'), 'Primero seleccioná un modelo');
+
+    // Cargar modelos
+    showLoading(document.getElementById('model'), 'Cargando modelos...');
+    const models = await fetchWithCache(`/models/${year}/${brandId}`);
+    populateSelect(document.getElementById('model'), models, 'Seleccioná modelo');
+    console.log(`✅ Modelos cargados para marca ${brandId}:`, models.length);
+  } catch (error) {
+    showError(document.getElementById('model'), 'Error cargando modelos');
+    console.error('Error cargando modelos:', error);
+  }
+}
+
+// Cargar versiones cuando se selecciona un modelo
+async function loadVersions(year, brandId, modelId) {
+  try {
+    // Resetear select de versiones
+    resetSelect(document.getElementById('version'), 'Seleccioná versión');
+
+    // Cargar versiones
+    showLoading(document.getElementById('version'), 'Cargando versiones...');
+    const versions = await fetchWithCache(`/versions/${year}/${brandId}/${modelId}`);
+    populateSelect(document.getElementById('version'), versions, 'Seleccioná versión');
+    console.log(`✅ Versiones cargadas para modelo ${modelId}:`, versions.length);
+  } catch (error) {
+    showError(document.getElementById('version'), 'Error cargando versiones');
+    console.error('Error cargando versiones:', error);
+  }
+}
+
+// ===========================================
+// INICIALIZACIÓN DEL FORMULARIO
+// ===========================================
+
+// ==== Inicializar formulario ====
+$(document).ready(function() {
+  console.log('🚀 Inicializando formulario...');
+  
+  // Cargar años al inicializar
+  loadYears();
+  
+  // Event listeners para los selects usando jQuery
+  $('#year').on('change', async function() {
+    const year = this.value;
+    console.log(`📅 Año seleccionado: ${year}`);
+    if (year) {
+      await loadBrands(year);
+    }
+  });
+
+  $('#brand').on('change', async function() {
+    const brandId = this.value;
+    const year = $('#year').val();
+    console.log(`🏷️ Marca seleccionada: ${brandId} para año ${year}`);
+    if (brandId && year) {
+      await loadModels(year, brandId);
+    }
+  });
+
+  $('#model').on('change', async function() {
+    const modelId = this.value;
+    const year = $('#year').val();
+    const brandId = $('#brand').val();
+    console.log(`🚗 Modelo seleccionado: ${modelId} para marca ${brandId} año ${year}`);
+    if (modelId && year && brandId) {
+      await loadVersions(year, brandId, modelId);
+    }
+  });
+});
+
+// ==== Inicializar campo de teléfono ====
+$(document).ready(function() {
+  const phoneInput = document.getElementById("phone");
+  iti = window.intlTelInput(phoneInput, {
+    initialCountry: "ar",
+    allowDropdown: false,
+    countrySearch: false,
+    strictMode: true,
+    nationalMode: true,
+    showDropdown: false,
+    utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.10/build/js/utils.js"
+  });
+  
+  phoneInput.addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '');
+  });
+});
+
+// ===========================================
+// NAVEGACIÓN MULTI-PASO
+// ===========================================
+let currentStep = 1;
+
+function goToStep(step) {
+  form.querySelectorAll('.wp-form-section').forEach(s=>s.classList.remove('active'));
+  form.querySelector(`.wp-form-section[data-step="${step}"]`).classList.add('active');
+  form.querySelectorAll('.wp-form-tab').forEach(t=>t.classList.remove('active'));
+  form.querySelector(`.wp-form-tab[data-step="${step}"]`).classList.add('active');
+  currentStep = step;
+}
+
+function showError(step, msg) {
+  form.querySelector(`.wp-form-section[data-step="${step}"] .wp-error`).textContent = msg||'';
+}
+
+function showLoading(show) {
+  const loadingEl = form.querySelector('.wp-loading');
+  if (show) {
+    loadingEl.classList.add('show');
+  } else {
+    loadingEl.classList.remove('show');
+  }
+}
+
+// Eventos de navegación
+document.getElementById('wp-next-1').onclick = function() {
+  showError(1,"");
+  if(!form.year.value || !form.brand.value || !form.model.value || !form.version.value)
+    return showError(1, "Completá todos los campos");
+  goToStep(2);
+};
+
+document.getElementById('wp-next-2').onclick = function() {
+  showError(2,"");
+  if(!form.km.value || isNaN(form.km.value) || !/^\d+$/.test(form.km.value))
+    return showError(2,"Kilometraje: solo números");
+  if(!form.postal.value || !/^[0-9]{4,5}$/.test(form.postal.value))
+    return showError(2,"Código postal inválido");
+  goToStep(3);
+};
+
+document.getElementById('wp-back-2').onclick = () => goToStep(1);
+document.getElementById('wp-back-3').onclick = () => goToStep(2);
+
+// Eventos de clic en pestañas
+form.querySelectorAll('.wp-form-tab').forEach(tab => {
+  tab.onclick = () => goToStep(+tab.dataset.step);
+});
+
+// ===========================================
+// ENVÍO DEL FORMULARIO
+// ===========================================
+form.onsubmit = async function(e) {
+  e.preventDefault();
+  showError(3,"");
+  showLoading(true);
+  
+  // Validar teléfono
+  const isValidPhone = iti && iti.isValidNumber();
+  if(!isValidPhone) {
+    showLoading(false);
+    return showError(3, "Teléfono inválido. Ingresá un número válido incluyendo código de país.");
+  }
+  
+  // Obtener datos del formulario usando jQuery para Select2
+  const datos = {
+    year: $('#year').val(),
+    brand: $('#brand option:selected').text(),
+    brandId: $('#brand').val(),
+    model: $('#model option:selected').text(),
+    modelId: $('#model').val(),
+    version: $('#version option:selected').text(),
+    versionId: $('#version').val(),
+    modelVersion: $('#model option:selected').text() + " - " + $('#version option:selected').text(),
+    km: form.km.value,
+    postal: form.postal.value,
+    name: form.name.value.trim(),
+    phone: iti.getNumber(),
+    email: form.email.value.trim()
+  };
+  
+  // Validaciones adicionales
+  if(!datos.name) {
+    showLoading(false);
+    return showError(3,"Nombre obligatorio");
+  }
+  if(!/^[^@]+@[^@]+\.[^@]+$/.test(datos.email)) {
+    showLoading(false);
+    return showError(3,"Email inválido");
+  }
+
+  try {
+    // Crear mensaje para WhatsApp PRIMERO (antes de enviar al backend)
+    const wpMsg =
+      `Hola! Quiero cotizar mi auto:\n`+
+      `Marca: ${datos.brand}\nModelo: ${datos.model}\nVersión: ${datos.version}\nAño: ${datos.year}\n`+
+      `Kilometraje: ${datos.km}\nCP: ${datos.postal}\nNombre: ${datos.name}\nTel: ${datos.phone}\nEmail: ${datos.email}`;
+    const wpURL = "https://wa.me/5491125286946?text=" + encodeURIComponent(wpMsg);
+    
+    console.log("Datos para WhatsApp:", datos);
+    console.log("URL de WhatsApp:", wpURL);
+    
+    // Enviar datos al backend
+    const response = await fetch(BACKEND_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(datos)
+    });
+    
+    showLoading(false);
+    
+    if (response.ok) {
+      console.log("✅ Datos enviados correctamente al backend");
+      
+      // Redireccionar a WhatsApp con un pequeño delay
+      setTimeout(() => {
+        console.log("🚀 Redirigiendo a WhatsApp...");
+        window.location.href = wpURL;
+      }, 500);
+      
+      // Mostrar mensaje de éxito
+      const successMsg = document.getElementById("wp-success-msg");
+      successMsg.textContent = "¡Gracias por contactar con nosotros! Te hemos redirigido a WhatsApp para completar tu consulta.";
+      successMsg.classList.add("show");
+      
+    } else {
+      console.error("❌ Error del backend:", response.status);
+      
+      // Aunque el backend falle, intentamos redireccionar a WhatsApp
+      console.log("🚀 Redirigiendo a WhatsApp a pesar del error del backend...");
+      window.location.href = wpURL;
+      
+      // Mostrar mensaje informativo
+      const successMsg = document.getElementById("wp-success-msg");
+      successMsg.textContent = "Te hemos redirigido a WhatsApp. Si tienes problemas, contactanos directamente.";
+      successMsg.classList.add("show");
+    }
+    
+  } catch (error) {
+    console.error("❌ Error completo:", error);
+    showLoading(false);
+    
+    // En caso de error, crear mensaje manual para WhatsApp
+    const wpMsg = `Hola! Quiero cotizar mi auto: ${datos.brand} ${datos.model} ${datos.version} del ${datos.year}. Mi nombre es ${datos.name}, teléfono: ${datos.phone}, email: ${datos.email}`;
+    const wpURL = "https://wa.me/5491125286946?text=" + encodeURIComponent(wpMsg);
+    
+    console.log("🚀 Redirigiendo a WhatsApp como fallback...");
+    window.location.href = wpURL;
+    
+    showError(3, "Enviamos tu consulta por WhatsApp. Si no se abrió automáticamente, contactanos directamente al +54 9 11 2528-6946");
+  }
+};
+
+// Limpiar mensaje de éxito cuando el usuario modifica el formulario
+form.addEventListener('input', function() {
+  document.getElementById("wp-success-msg").classList.remove("show");
+});
+</script>
+
+</body>
+</html>
