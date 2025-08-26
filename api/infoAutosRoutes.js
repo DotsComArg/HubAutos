@@ -32,6 +32,24 @@ router.get('/health', async (req, res) => {
   }
 });
 
+// Endpoint de debug para verificar tokens
+router.get('/debug', async (req, res) => {
+  try {
+    const tokenInfo = infoAutosApi.getTokenStats();
+    
+    res.json({
+      success: true,
+      message: 'Información de debug de tokens',
+      data: tokenInfo
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Obtener años disponibles
 router.get('/years', async (req, res) => {
   try {
@@ -176,6 +194,27 @@ router.post('/tokens', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error actualizando tokens:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Endpoint para forzar refresh de tokens (solo para testing)
+router.post('/force-refresh', async (req, res) => {
+  try {
+    console.log('🔄 Forzando refresh de tokens...');
+    await infoAutosApi.refreshAccessToken();
+    
+    const stats = infoAutosApi.getTokenStats();
+    res.json({
+      success: true,
+      message: 'Tokens refrescados forzadamente',
+      data: stats
+    });
+  } catch (error) {
+    console.error('❌ Error forzando refresh:', error);
     res.status(500).json({
       success: false,
       error: error.message

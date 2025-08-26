@@ -6,6 +6,8 @@ class InfoAutosApi {
     this.tokenExpiry = null;
     this.isRefreshing = false;
     this.refreshPromise = null;
+    this.lastRefreshTime = null;
+    this.refreshCount = 0;
   }
 
   // Configurar tokens iniciales
@@ -16,13 +18,31 @@ class InfoAutosApi {
     this.tokenExpiry = Date.now() + (60 * 60 * 1000); // 1 hora
   }
 
-  // Verificar si el token está expirado
+  // Verificar si el token está expirado (con margen de seguridad de 5 minutos)
   isTokenExpired() {
-    return !this.accessToken || Date.now() >= this.tokenExpiry;
+    if (!this.accessToken) return true;
+    
+    // Agregar margen de seguridad de 5 minutos para evitar llamadas con tokens casi expirados
+    const safetyMargin = 5 * 60 * 1000; // 5 minutos
+    return Date.now() >= (this.tokenExpiry - safetyMargin);
   }
 
-  // Refrescar el token
+  // Refrescar el token (con límites para evitar abuso)
   async refreshAccessToken() {
+    // Verificar si ya refrescamos recientemente (mínimo 5 minutos entre refrescos)
+    const minTimeBetweenRefreshes = 5 * 60 * 1000; // 5 minutos
+    if (this.lastRefreshTime && (Date.now() - this.lastRefreshTime) < minTimeBetweenRefreshes) {
+      console.log('⏳ Refresco reciente, esperando...');
+      const waitTime = minTimeBetweenRefreshes - (Date.now() - this.lastRefreshTime);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+
+    // Verificar límite de refrescos por hora (máximo 10 por hora)
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    if (this.lastRefreshTime && this.lastRefreshTime > oneHourAgo && this.refreshCount >= 10) {
+      throw new Error('Límite de refrescos por hora alcanzado. Espere antes de continuar.');
+    }
+
     if (this.isRefreshing) {
       return this.refreshPromise;
     }
@@ -32,6 +52,9 @@ class InfoAutosApi {
 
     try {
       const result = await this.refreshPromise;
+      // Actualizar contadores
+      this.lastRefreshTime = Date.now();
+      this.refreshCount++;
       return result;
     } finally {
       this.isRefreshing = false;
@@ -43,7 +66,8 @@ class InfoAutosApi {
     try {
       console.log('🔄 Refrescando access token...');
       
-      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+      // Intentar con el endpoint estándar primero
+      let response = await fetch(`${this.baseUrl}/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,16 +75,35 @@ class InfoAutosApi {
         }
       });
 
+      // Si falla, intentar con el endpoint alternativo
       if (!response.ok) {
-        throw new Error(`Error al refrescar token: ${response.status}`);
+        console.log('🔄 Primer endpoint falló, probando alternativo...');
+        response = await fetch(`${this.baseUrl}/auth/token/refresh`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.refreshToken}`
+          }
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(`Error al refrescar token: ${response.status} - ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('📡 Respuesta de refresh:', data);
       
       if (data.access_token) {
         this.accessToken = data.access_token;
         this.tokenExpiry = Date.now() + (60 * 60 * 1000); // 1 hora
         console.log('✅ Access token refrescado exitosamente');
+        return true;
+      } else if (data.token) {
+        // Algunas APIs usan 'token' en lugar de 'access_token'
+        this.accessToken = data.token;
+        this.tokenExpiry = Date.now() + (60 * 60 * 1000);
+        console.log('✅ Access token refrescado exitosamente (campo token)');
         return true;
       } else {
         throw new Error('No se recibió access token en la respuesta');
@@ -73,8 +116,12 @@ class InfoAutosApi {
 
   // Obtener headers con autenticación
   async getAuthHeaders() {
+    // Solo refrescar si el token está realmente expirado
     if (this.isTokenExpired()) {
+      console.log('🔄 Token expirado, refrescando...');
       await this.refreshAccessToken();
+    } else {
+      console.log('✅ Usando token existente válido');
     }
 
     return {
@@ -87,8 +134,12 @@ class InfoAutosApi {
   async makeRequest(endpoint, options = {}) {
     try {
       const headers = await this.getAuthHeaders();
+      console.log(`🔑 Headers de autenticación:`, headers);
       
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const fullUrl = `${this.baseUrl}${endpoint}`;
+      console.log(`🌐 Llamando a: ${fullUrl}`);
+      
+      const response = await fetch(fullUrl, {
         ...options,
         headers: {
           ...headers,
@@ -96,12 +147,16 @@ class InfoAutosApi {
         }
       });
 
+      console.log(`📡 Respuesta: ${response.status} ${response.statusText}`);
+      console.log(`📡 Headers de respuesta:`, Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
         if (response.status === 401) {
+          console.log('🔄 Token expirado (401), intentando refrescar...');
           // Token expirado, intentar refrescar
           await this.refreshAccessToken();
           // Reintentar la llamada
-          const retryResponse = await fetch(`${this.baseUrl}${endpoint}`, {
+          const retryResponse = await fetch(fullUrl, {
             ...options,
             headers: {
               ...(await this.getAuthHeaders()),
@@ -116,7 +171,16 @@ class InfoAutosApi {
           return await retryResponse.json();
         }
         
-        throw new Error(`Error en API: ${response.status} - ${response.statusText}`);
+        // Para otros errores, intentar obtener más detalles
+        let errorDetails = '';
+        try {
+          const errorBody = await response.text();
+          errorDetails = errorBody ? ` - ${errorBody}` : '';
+        } catch (e) {
+          // Ignorar errores al leer el body
+        }
+        
+        throw new Error(`Error en API: ${response.status} - ${response.statusText}${errorDetails}`);
       }
 
       return await response.json();
@@ -222,6 +286,21 @@ class InfoAutosApi {
         error: error.message
       };
     }
+  }
+
+  // Obtener estadísticas de uso de tokens
+  getTokenStats() {
+    return {
+      hasAccessToken: !!this.accessToken,
+      hasRefreshToken: !!this.refreshToken,
+      tokenExpiry: this.tokenExpiry,
+      isExpired: this.isTokenExpired(),
+      currentTime: Date.now(),
+      timeUntilExpiry: this.tokenExpiry ? this.tokenExpiry - Date.now() : null,
+      lastRefreshTime: this.lastRefreshTime,
+      refreshCount: this.refreshCount,
+      timeSinceLastRefresh: this.lastRefreshTime ? Date.now() - this.lastRefreshTime : null
+    };
   }
 }
 
