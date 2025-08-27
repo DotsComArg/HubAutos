@@ -204,6 +204,7 @@ class InfoAutosApi {
   // Obtener modelos por marca y año - Usar /brands/{brand_id}/models/
   async getModels(year, brandId) {
     try {
+      // Obtener TODOS los modelos de la marca (sin filtrar por año en la URL)
       const models = await this.makeRequest(`/brands/${brandId}/models/`, {
         query_mode: 'matching'
       });
@@ -213,6 +214,8 @@ class InfoAutosApi {
         return [];
       }
 
+      console.log(`📊 Total de modelos obtenidos para marca ${brandId}:`, models.length);
+
       // Filtrar modelos que tengan precios para el año especificado
       const filteredModels = models.filter(model => 
         model.prices && 
@@ -221,6 +224,8 @@ class InfoAutosApi {
         year >= model.prices_from && 
         year <= model.prices_to
       );
+
+      console.log(`📊 Modelos filtrados para año ${year}:`, filteredModels.length);
 
       // Agrupar modelos por grupo base para evitar duplicados
       const groupedModels = new Map();
@@ -239,10 +244,13 @@ class InfoAutosApi {
       });
 
       // Convertir a formato esperado por el frontend
-      return Array.from(groupedModels.values()).map(model => ({
+      const result = Array.from(groupedModels.values()).map(model => ({
         id: model.id.toString(),
         name: model.name
       }));
+
+      console.log(`✅ Modelos únicos agrupados para marca ${brandId} año ${year}:`, result.length);
+      return result;
 
     } catch (error) {
       console.error(`❌ Error obteniendo modelos para marca ${brandId} año ${year}:`, error);

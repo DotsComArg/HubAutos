@@ -546,9 +546,9 @@ async function loadModels(year, brandId) {
     resetSelect(document.getElementById('model'), 'Seleccioná modelo');
     resetSelect(document.getElementById('version'), 'Primero seleccioná un modelo');
 
-    // Cargar modelos
+    // Cargar modelos - NO enviar año en la URL, el backend filtrará por año
     showLoading(document.getElementById('model'), 'Cargando modelos...');
-    const models = await fetchWithCache(`/models/${year}/${brandId}`);
+    const models = await fetchWithCache(`/models/${brandId}?year=${year}`);
     populateSelect(document.getElementById('model'), models, 'Seleccioná modelo');
     console.log(`✅ Modelos cargados desde Info Autos para marca ${brandId}:`, models.length);
   } catch (error) {
