@@ -1,4 +1,5 @@
 const axios = require('axios');
+const config = require('../config/infoAutos');
 
 class InfoAutosApi {
   constructor() {
@@ -7,8 +8,11 @@ class InfoAutosApi {
     this.accessToken = null;
     this.refreshToken = null;
     this.tokenExpiry = null;
+    this.refreshTokenExpiry = null;
     this.isRefreshing = false;
     this.refreshPromise = null;
+    this.isLoggingIn = false;
+    this.loginPromise = null;
   }
 
   setTokens(accessToken, refreshToken) {
@@ -16,12 +20,20 @@ class InfoAutosApi {
     this.refreshToken = refreshToken;
     // Calcular expiración (1 hora desde ahora)
     this.tokenExpiry = Date.now() + (60 * 60 * 1000);
+    // Calcular expiración del refresh token (24 horas desde ahora)
+    this.refreshTokenExpiry = Date.now() + (24 * 60 * 60 * 1000);
   }
 
   isTokenExpired() {
     // Agregar margen de seguridad de 5 minutos para evitar llamadas con tokens casi expirados
     const safetyMargin = 5 * 60 * 1000; // 5 minutos
     return !this.tokenExpiry || Date.now() >= (this.tokenExpiry - safetyMargin);
+  }
+
+  isRefreshTokenExpired() {
+    // Agregar margen de seguridad de 1 hora para el refresh token
+    const safetyMargin = 60 * 60 * 1000; // 1 hora
+    return !this.refreshTokenExpiry || Date.now() >= (this.refreshTokenExpiry - safetyMargin);
   }
 
   // Renovar token automáticamente si es necesario
@@ -34,6 +46,12 @@ class InfoAutosApi {
       if (this.isRefreshing) {
         console.log('⏳ Ya se está renovando el token, esperando...');
         return this.refreshPromise;
+      }
+
+      // Si ya estamos haciendo login, esperar a que termine
+      if (this.isLoggingIn) {
+        console.log('⏳ Ya se está haciendo login, esperando...');
+        return this.loginPromise;
       }
 
       // Iniciar renovación
@@ -322,7 +340,11 @@ class InfoAutosApi {
       hasAccessToken: !!this.accessToken,
       hasRefreshToken: !!this.refreshToken,
       isExpired: this.isTokenExpired(),
-      expiresAt: this.tokenExpiry ? new Date(this.tokenExpiry).toISOString() : null
+      isRefreshTokenExpired: this.isRefreshTokenExpired(),
+      accessTokenExpiresAt: this.tokenExpiry ? new Date(this.tokenExpiry).toISOString() : null,
+      refreshTokenExpiresAt: this.refreshTokenExpiry ? new Date(this.refreshTokenExpiry).toISOString() : null,
+      isRefreshing: this.isRefreshing,
+      isLoggingIn: this.isLoggingIn
     };
   }
 
@@ -331,7 +353,13 @@ class InfoAutosApi {
     try {
       console.log('🔄 Refrescando token de acceso...');
       
-      const response = await axios.post(`${this.authURL}/refresh`, {
+      // Si el refresh token está expirado, hacer login completo
+      if (this.isRefreshTokenExpired()) {
+        console.log('⚠️ Refresh token expirado, haciendo login completo...');
+        return await this.login();
+      }
+      
+      const response = await axios.post(config.REFRESH_URL, {
         refresh_token: this.refreshToken
       }, {
         headers: {
@@ -350,12 +378,78 @@ class InfoAutosApi {
     } catch (error) {
       console.error('❌ Error refrescando token:', error.response?.data || error.message);
       
-      // Si el refresh token también expiró, necesitamos nuevos tokens
+      // Si el refresh falla, intentar login completo
       if (error.response?.status === 401) {
-        throw new Error('Refresh token expirado. Se necesitan nuevos tokens de Info Autos.');
+        console.log('🔄 Refresh token inválido, intentando login completo...');
+        return await this.login();
       }
       
       throw error;
+    }
+  }
+
+  // Login completo para obtener nuevos tokens
+  async login() {
+    try {
+      console.log('🔐 Haciendo login completo para obtener nuevos tokens...');
+      
+      // Si ya estamos haciendo login, esperar a que termine
+      if (this.isLoggingIn) {
+        console.log('⏳ Ya se está haciendo login, esperando...');
+        return this.loginPromise;
+      }
+
+      // Iniciar login
+      this.isLoggingIn = true;
+      this.loginPromise = this.performLogin();
+      
+      try {
+        const result = await this.loginPromise;
+        console.log('✅ Login completado exitosamente');
+        return result;
+      } finally {
+        this.isLoggingIn = false;
+        this.loginPromise = null;
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en login:', error);
+      throw error;
+    }
+  }
+
+  // Realizar login con credenciales
+  async performLogin() {
+    try {
+      // Crear Basic Auth header
+      const credentials = `${config.USERNAME}:${config.PASSWORD}`;
+      const base64Credentials = Buffer.from(credentials).toString('base64');
+      
+      const response = await axios.post(config.LOGIN_URL, {}, {
+        headers: {
+          'Authorization': `Basic ${base64Credentials}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.access_token && response.data.refresh_token) {
+        // Actualizar tokens
+        this.accessToken = response.data.access_token;
+        this.refreshToken = response.data.refresh_token;
+        this.tokenExpiry = Date.now() + (60 * 60 * 1000); // 1 hora
+        this.refreshTokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 horas
+        
+        console.log('✅ Nuevos tokens obtenidos por login');
+        console.log(`📅 Access token expira: ${new Date(this.tokenExpiry).toISOString()}`);
+        console.log(`📅 Refresh token expira: ${new Date(this.refreshTokenExpiry).toISOString()}`);
+        
+        return true;
+      } else {
+        throw new Error('No se recibieron tokens en la respuesta de login');
+      }
+    } catch (error) {
+      console.error('❌ Error en performLogin:', error.response?.data || error.message);
+      throw new Error(`Error de login: ${error.response?.status || 'Sin respuesta'} - ${error.message}`);
     }
   }
 }

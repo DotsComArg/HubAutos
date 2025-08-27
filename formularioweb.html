@@ -726,7 +726,7 @@ form.onsubmit = async function(e) {
   }
 
   try {
-    // Crear mensaje para WhatsApp PRIMERO (antes de enviar al backend)
+    // Crear mensaje para WhatsApp
     const wpMsg =
       `Hola! Quiero cotizar mi auto:\n`+
       `Marca: ${datos.brand}\nModelo: ${datos.model}\nVersión: ${datos.version}\nAño: ${datos.year}\n`+
@@ -736,39 +736,68 @@ form.onsubmit = async function(e) {
     console.log("Datos para WhatsApp:", datos);
     console.log("URL de WhatsApp:", wpURL);
     
-    // Enviar datos al backend
-    const response = await fetch(BACKEND_URL, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(datos)
-    });
+    // Enviar datos al backend con timeout de seguridad
+    console.log("📤 Enviando datos al backend...");
     
-    showLoading(false);
-    
-    if (response.ok) {
-      console.log("✅ Datos enviados correctamente al backend");
+    // Crear un timeout de 4.5 segundos para evitar que se cuelgue
+    const backendTimeout = setTimeout(() => {
+      console.log("⏰ Timeout de 4.5s alcanzado, backend no responde");
+      showLoading(false);
       
-      // Redireccionar a WhatsApp con un pequeño delay
-      setTimeout(() => {
-        console.log("🚀 Redirigiendo a WhatsApp...");
-        window.location.href = wpURL;
-      }, 500);
-      
-      // Mostrar mensaje de éxito
-      const successMsg = document.getElementById("wp-success-msg");
-      successMsg.textContent = "¡Gracias por contactar con nosotros! Te hemos redirigido a WhatsApp para completar tu consulta.";
-      successMsg.classList.add("show");
-      
-    } else {
-      console.error("❌ Error del backend:", response.status);
-      
-      // Aunque el backend falle, intentamos redireccionar a WhatsApp
-      console.log("🚀 Redirigiendo a WhatsApp a pesar del error del backend...");
+      // Si el backend no responde, redirigir a WhatsApp como fallback
+      console.log("🚀 Redirigiendo a WhatsApp por timeout del backend...");
       window.location.href = wpURL;
       
       // Mostrar mensaje informativo
       const successMsg = document.getElementById("wp-success-msg");
-      successMsg.textContent = "Te hemos redirigido a WhatsApp. Si tienes problemas, contactanos directamente.";
+      successMsg.textContent = "Tu consulta se envió por WhatsApp. Si tienes problemas, contactanos directamente.";
+      successMsg.classList.add("show");
+    }, 4500);
+    
+    try {
+      const response = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(datos)
+      });
+      
+      // Cancelar el timeout ya que el backend respondió
+      clearTimeout(backendTimeout);
+      showLoading(false);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log("✅ Datos recibidos correctamente por el backend:", result);
+        
+        // Redireccionar a WhatsApp solo después de confirmación del backend
+        console.log("🚀 Backend confirmó recepción, redirigiendo a WhatsApp...");
+        window.location.href = wpURL;
+        
+        // Mostrar mensaje de éxito
+        const successMsg = document.getElementById("wp-success-msg");
+        successMsg.textContent = "¡Gracias por contactar con nosotros! Tu consulta ha sido recibida y te hemos redirigido a WhatsApp para completar el proceso.";
+        successMsg.classList.add("show");
+        
+      } else {
+        console.error("❌ Error del backend:", response.status);
+        
+        // Si el backend falla, mostrar error pero NO redirigir a WhatsApp
+        showError(3, "Hubo un problema al procesar tu consulta. Por favor, intenta nuevamente o contactanos directamente al +54 9 11 2528-6946");
+      }
+      
+    } catch (fetchError) {
+      // Cancelar el timeout ya que hubo un error
+      clearTimeout(backendTimeout);
+      console.error("❌ Error en fetch:", fetchError);
+      showLoading(false);
+      
+      // Si hay error de fetch, redirigir a WhatsApp como fallback
+      console.log("🚀 Redirigiendo a WhatsApp por error de fetch...");
+      window.location.href = wpURL;
+      
+      // Mostrar mensaje informativo
+      const successMsg = document.getElementById("wp-success-msg");
+      successMsg.textContent = "Tu consulta se envió por WhatsApp. Si tienes problemas, contactanos directamente.";
       successMsg.classList.add("show");
     }
     
@@ -776,14 +805,8 @@ form.onsubmit = async function(e) {
     console.error("❌ Error completo:", error);
     showLoading(false);
     
-    // En caso de error, crear mensaje manual para WhatsApp
-    const wpMsg = `Hola! Quiero cotizar mi auto: ${datos.brand} ${datos.model} ${datos.version} del ${datos.year}. Mi nombre es ${datos.name}, teléfono: ${datos.phone}, email: ${datos.email}`;
-    const wpURL = "https://wa.me/5491125286946?text=" + encodeURIComponent(wpMsg);
-    
-    console.log("🚀 Redirigiendo a WhatsApp como fallback...");
-    window.location.href = wpURL;
-    
-    showError(3, "Enviamos tu consulta por WhatsApp. Si no se abrió automáticamente, contactanos directamente al +54 9 11 2528-6946");
+    // En caso de error de red, mostrar mensaje apropiado
+    showError(3, "Error de conexión. Por favor, verifica tu internet e intenta nuevamente, o contactanos directamente al +54 9 11 2528-6946");
   }
 };
 
