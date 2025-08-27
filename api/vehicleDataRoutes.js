@@ -18,13 +18,18 @@ router.get('/health', async (req, res) => {
   try {
     const connection = await vehicleService.checkConnection();
     const tokenStats = vehicleService.getTokenStats();
+    const fallbackStatus = vehicleService.isUsingFallbackForYears();
     
     res.json({
       success: true,
       message: 'Servicio de datos de vehículos funcionando correctamente',
       data: {
         connection,
-        tokenStats
+        tokenStats,
+        fallbackStatus: {
+          usingFallbackForYears: fallbackStatus,
+          message: fallbackStatus ? 'Usando datos de fallback para años' : 'Usando Info Autos para años'
+        }
       }
     });
   } catch (error) {
@@ -213,6 +218,78 @@ router.post('/refresh-tokens', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error refrescando tokens:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Forzar uso de fallback
+router.post('/force-fallback', async (req, res) => {
+  try {
+    vehicleService.forceFallback();
+    
+    res.json({
+      success: true,
+      message: 'Fallback forzado correctamente',
+      data: {
+        isUsingFallback: true
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error forzando fallback:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Forzar uso de fallback para años
+router.post('/force-fallback-years', async (req, res) => {
+  try {
+    vehicleService.forceFallbackForYears();
+    const fallbackStatus = vehicleService.isUsingFallbackForYears();
+    
+    res.json({
+      success: true,
+      message: 'Fallback para años activado',
+      data: {
+        fallbackStatus: {
+          usingFallbackForYears: fallbackStatus,
+          message: fallbackStatus ? 'Usando datos de fallback para años' : 'Usando Info Autos para años'
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error forzando fallback para años:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Ver estado del sistema
+router.get('/status', async (req, res) => {
+  try {
+    const isUsingFallback = vehicleService.isUsingFallback();
+    const tokenStats = vehicleService.getTokenStats();
+    
+    res.json({
+      success: true,
+      data: {
+        isUsingFallback,
+        fallbackEnabled: isUsingFallback,
+        tokenStats,
+        message: isUsingFallback ? 
+          'Sistema usando datos de fallback' : 
+          'Sistema usando API de Info Autos'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error obteniendo estado:', error);
     res.status(500).json({
       success: false,
       error: error.message

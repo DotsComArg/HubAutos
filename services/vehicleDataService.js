@@ -1,10 +1,12 @@
 const InfoAutosApi = require('../classes/infoAutosApi');
 const config = require('../config/infoAutos');
+const fallbackData = require('../data/fallbackData');
 
 class VehicleDataService {
   constructor() {
     this.infoAutosApi = new InfoAutosApi();
     this.infoAutosApi.setTokens(config.ACCESS_TOKEN, config.REFRESH_TOKEN);
+    this.useFallbackForYears = false;
   }
 
   // Obtener años disponibles
@@ -13,10 +15,19 @@ class VehicleDataService {
       console.log('📅 Obteniendo años desde Info Autos...');
       const years = await this.infoAutosApi.getYears();
       console.log(`✅ Años obtenidos: ${years.length}`);
-      return years;
+      
+      if (years && years.length > 0) {
+        this.useFallbackForYears = false;
+        return years;
+      } else {
+        console.log('⚠️ Info Autos devolvió array vacío para años, usando datos de fallback');
+        this.useFallbackForYears = true;
+        return fallbackData.years;
+      }
     } catch (error) {
-      console.error('❌ Error obteniendo años:', error);
-      throw error;
+      console.error('❌ Error obteniendo años desde Info Autos, usando fallback:', error);
+      this.useFallbackForYears = true;
+      return fallbackData.years;
     }
   }
 
@@ -26,10 +37,16 @@ class VehicleDataService {
       console.log(`🏷️ Obteniendo marcas para año ${year} desde Info Autos...`);
       const brands = await this.infoAutosApi.getBrands(year);
       console.log(`✅ Marcas obtenidas para año ${year}: ${brands.length}`);
-      return brands;
+      
+      if (brands && brands.length > 0) {
+        return brands;
+      } else {
+        console.log('⚠️ Info Autos devolvió marcas vacías');
+        return [];
+      }
     } catch (error) {
       console.error(`❌ Error obteniendo marcas para año ${year}:`, error);
-      throw error;
+      return [];
     }
   }
 
@@ -39,10 +56,16 @@ class VehicleDataService {
       console.log(`🚗 Obteniendo modelos para marca ${brandId} año ${year} desde Info Autos...`);
       const models = await this.infoAutosApi.getModels(year, brandId);
       console.log(`✅ Modelos obtenidos para marca ${brandId}: ${models.length}`);
-      return models;
+      
+      if (models && models.length > 0) {
+        return models;
+      } else {
+        console.log('⚠️ Info Autos devolvió modelos vacíos');
+        return [];
+      }
     } catch (error) {
       console.error(`❌ Error obteniendo modelos para marca ${brandId} año ${year}:`, error);
-      throw error;
+      return [];
     }
   }
 
@@ -52,10 +75,16 @@ class VehicleDataService {
       console.log(`🔧 Obteniendo versiones para modelo ${modelId} marca ${brandId} año ${year} desde Info Autos...`);
       const versions = await this.infoAutosApi.getVersions(year, brandId, modelId);
       console.log(`✅ Versiones obtenidas para modelo ${modelId}: ${versions.length}`);
-      return versions;
+      
+      if (versions && versions.length > 0) {
+        return versions;
+      } else {
+        console.log('⚠️ Info Autos devolvió versiones vacías');
+        return [];
+      }
     } catch (error) {
       console.error(`❌ Error obteniendo versiones para modelo ${modelId}:`, error);
-      throw error;
+      return [];
     }
   }
 
@@ -90,6 +119,17 @@ class VehicleDataService {
       console.error('❌ Error refrescando tokens:', error);
       throw error;
     }
+  }
+
+  // Verificar si está usando fallback para años
+  isUsingFallbackForYears() {
+    return this.useFallbackForYears;
+  }
+
+  // Forzar uso de fallback para años
+  forceFallbackForYears() {
+    this.useFallbackForYears = true;
+    console.log('🔄 Forzando uso de datos de fallback para años');
   }
 }
 
