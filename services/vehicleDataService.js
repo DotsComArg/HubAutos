@@ -69,6 +69,25 @@ class VehicleDataService {
     }
   }
 
+  // Obtener TODOS los modelos de una marca (sin filtrar por año)
+  async getAllModelsForBrand(brandId) {
+    try {
+      console.log(`🚗 Obteniendo TODOS los modelos para marca ${brandId} desde Info Autos...`);
+      const models = await this.infoAutosApi.getAllModelsForBrand(brandId);
+      console.log(`✅ Total de modelos obtenidos para marca ${brandId}: ${models.length}`);
+      
+      if (models && models.length > 0) {
+        return models;
+      } else {
+        console.log('⚠️ Info Autos devolvió modelos vacíos');
+        return [];
+      }
+    } catch (error) {
+      console.error(`❌ Error obteniendo todos los modelos para marca ${brandId}:`, error);
+      return [];
+    }
+  }
+
   // Obtener versiones por modelo, marca y año
   async getVersions(year, brandId, modelId) {
     try {

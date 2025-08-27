@@ -97,20 +97,12 @@ router.get('/brands/:year', async (req, res) => {
   }
 });
 
-// Obtener modelos por marca y año
+// Obtener modelos por marca (sin filtrar por año)
 router.get('/brands/:brandId/models', async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { year } = req.query; // El año viene como query parameter
     
-    console.log(`🚗 Solicitando modelos para marca ${brandId} año ${year}...`);
-    
-    if (!year || isNaN(year)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Año requerido como query parameter (ej: ?year=2024)'
-      });
-    }
+    console.log(`🚗 Solicitando TODOS los modelos para marca ${brandId}...`);
     
     if (!brandId) {
       return res.status(400).json({
@@ -122,17 +114,17 @@ router.get('/brands/:brandId/models', async (req, res) => {
     // Refrescar tokens si es necesario
     await vehicleService.refreshTokensIfNeeded();
     
-    const models = await vehicleService.getModels(year, brandId);
+    // Obtener todos los modelos de la marca sin filtrar por año
+    const models = await vehicleService.getAllModelsForBrand(brandId);
     
     res.json({
       success: true,
       data: models,
       source: 'infoautos',
-      year: year,
       brandId: brandId
     });
   } catch (error) {
-    console.error(`❌ Error obteniendo modelos para marca ${req.params.brandId} año ${req.query.year}:`, error);
+    console.error(`❌ Error obteniendo modelos para marca ${req.params.brandId}:`, error);
     res.status(500).json({
       success: false,
       error: error.message

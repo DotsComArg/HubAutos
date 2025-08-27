@@ -540,15 +540,15 @@ async function loadBrands(year) {
 }
 
 // Cargar modelos cuando se selecciona una marca
-async function loadModels(year, brandId) {
+async function loadModels(brandId) {
   try {
     // Resetear selects dependientes
     resetSelect(document.getElementById('model'), 'Seleccioná modelo');
     resetSelect(document.getElementById('version'), 'Primero seleccioná un modelo');
 
-    // Cargar modelos - Usar la nueva ruta /brands/{brandId}/models
+    // Cargar modelos - Usar la nueva ruta /brands/{brandId}/models (sin año)
     showLoading(document.getElementById('model'), 'Cargando modelos...');
-    const models = await fetchWithCache(`/brands/${brandId}/models?year=${year}`);
+    const models = await fetchWithCache(`/brands/${brandId}/models`);
     populateSelect(document.getElementById('model'), models, 'Seleccioná modelo');
     console.log(`✅ Modelos cargados desde Info Autos para marca ${brandId}:`, models.length);
   } catch (error) {
@@ -599,7 +599,7 @@ $(document).ready(function() {
     const year = $('#year').val();
     console.log(`🏷️ Marca seleccionada: ${brandId} para año ${year}`);
     if (brandId && year) {
-      await loadModels(year, brandId);
+      await loadModels(brandId);
     }
   });
 

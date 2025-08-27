@@ -258,6 +258,54 @@ class InfoAutosApi {
     }
   }
 
+  // Obtener TODOS los modelos de una marca (sin filtrar por año)
+  async getAllModelsForBrand(brandId) {
+    try {
+      console.log(`🚗 Obteniendo TODOS los modelos para marca ${brandId} (sin filtrar por año)...`);
+      
+      // Obtener TODOS los modelos de la marca (sin filtrar por año en la URL)
+      const models = await this.makeRequest(`/brands/${brandId}/models/`, {
+        query_mode: 'matching'
+      });
+
+      if (!models || !Array.isArray(models)) {
+        console.log('⚠️ Respuesta de models no válida');
+        return [];
+      }
+
+      console.log(`📊 Total de modelos obtenidos para marca ${brandId}:`, models.length);
+
+      // Agrupar modelos por grupo base para evitar duplicados (sin filtrar por año)
+      const groupedModels = new Map();
+      
+      models.forEach(model => {
+        const groupKey = model.group?.name || 'Sin grupo';
+        const groupId = model.group?.id || '0';
+        
+        if (!groupedModels.has(groupKey)) {
+          groupedModels.set(groupKey, {
+            id: groupId,
+            name: groupKey,
+            fullDescription: model.description || 'Modelo sin nombre'
+          });
+        }
+      });
+
+      // Convertir a formato esperado por el frontend
+      const result = Array.from(groupedModels.values()).map(model => ({
+        id: model.id.toString(),
+        name: model.name
+      }));
+
+      console.log(`✅ Modelos únicos agrupados para marca ${brandId} (sin filtrar por año):`, result.length);
+      return result;
+
+    } catch (error) {
+      console.error(`❌ Error obteniendo todos los modelos para marca ${brandId}:`, error);
+      throw error;
+    }
+  }
+
   // Obtener versiones por modelo - Usar /brands/{brand_id}/models/ y filtrar por grupo
   async getVersions(year, brandId, modelId) {
     try {
