@@ -10,6 +10,7 @@ const urlShortener = require('../utils/urlShortener');
 const MongoService = require('../services/mongoService');
 const formEntryRoutes = require('./formEntryRoutes');
 const infoAutosRoutes = require('./infoAutosRoutes');
+const vehicleDataRoutes = require('./vehicleDataRoutes');
 
 const { json, urlencoded } = express;
 dotenv.config();
@@ -24,6 +25,9 @@ app.use('/api/form-entries', formEntryRoutes);
 
 // Rutas de Info Autos API
 app.use('/api/infoautos', infoAutosRoutes);
+
+// Rutas de datos de vehículos (estáticos)
+app.use('/api/vehicles', vehicleDataRoutes);
 
 const port = process.env.PORT || 3000;
 

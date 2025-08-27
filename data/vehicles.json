@@ -1,0 +1,213 @@
+{
+  "years": [
+    {"id": "2025", "name": "2025"},
+    {"id": "2024", "name": "2024"},
+    {"id": "2023", "name": "2023"},
+    {"id": "2022", "name": "2022"},
+    {"id": "2021", "name": "2021"},
+    {"id": "2020", "name": "2020"},
+    {"id": "2019", "name": "2019"},
+    {"id": "2018", "name": "2018"},
+    {"id": "2017", "name": "2017"},
+    {"id": "2016", "name": "2016"},
+    {"id": "2015", "name": "2015"}
+  ],
+  "brands": {
+    "2025": [
+      {"id": "1", "name": "Chevrolet"},
+      {"id": "2", "name": "Ford"},
+      {"id": "3", "name": "Volkswagen"},
+      {"id": "4", "name": "Toyota"},
+      {"id": "5", "name": "Renault"},
+      {"id": "6", "name": "Peugeot"},
+      {"id": "7", "name": "Fiat"},
+      {"id": "8", "name": "Honda"},
+      {"id": "9", "name": "Nissan"},
+      {"id": "10", "name": "Hyundai"}
+    ],
+    "2024": [
+      {"id": "1", "name": "Chevrolet"},
+      {"id": "2", "name": "Ford"},
+      {"id": "3", "name": "Volkswagen"},
+      {"id": "4", "name": "Toyota"},
+      {"id": "5", "name": "Renault"},
+      {"id": "6", "name": "Peugeot"},
+      {"id": "7", "name": "Fiat"},
+      {"id": "8", "name": "Honda"},
+      {"id": "9", "name": "Nissan"},
+      {"id": "10", "name": "Hyundai"}
+    ],
+    "2023": [
+      {"id": "1", "name": "Chevrolet"},
+      {"id": "2", "name": "Ford"},
+      {"id": "3", "name": "Volkswagen"},
+      {"id": "4", "name": "Toyota"},
+      {"id": "5", "name": "Renault"},
+      {"id": "6", "name": "Peugeot"},
+      {"id": "7", "name": "Fiat"},
+      {"id": "8", "name": "Honda"},
+      {"id": "9", "name": "Nissan"},
+      {"id": "10", "name": "Hyundai"}
+    ]
+  },
+  "models": {
+    "2025": {
+      "1": [
+        {"id": "1", "name": "Onix"},
+        {"id": "2", "name": "Tracker"},
+        {"id": "3", "name": "Cruze"},
+        {"id": "4", "name": "Prisma"}
+      ],
+      "2": [
+        {"id": "1", "name": "Ranger"},
+        {"id": "2", "name": "Territory"},
+        {"id": "3", "name": "Focus"},
+        {"id": "4", "name": "EcoSport"}
+      ],
+      "3": [
+        {"id": "1", "name": "Gol Trend"},
+        {"id": "2", "name": "Virtus"},
+        {"id": "3", "name": "T-Cross"},
+        {"id": "4", "name": "Amarok"}
+      ],
+      "4": [
+        {"id": "1", "name": "Hilux"},
+        {"id": "2", "name": "Corolla Cross"},
+        {"id": "3", "name": "Yaris"},
+        {"id": "4", "name": "SW4"}
+      ]
+    },
+    "2024": {
+      "1": [
+        {"id": "1", "name": "Onix"},
+        {"id": "2", "name": "Tracker"},
+        {"id": "3", "name": "Cruze"},
+        {"id": "4", "name": "Prisma"}
+      ],
+      "2": [
+        {"id": "1", "name": "Ranger"},
+        {"id": "2", "name": "Territory"},
+        {"id": "3", "name": "Focus"},
+        {"id": "4", "name": "EcoSport"}
+      ],
+      "3": [
+        {"id": "1", "name": "Gol Trend"},
+        {"id": "2", "name": "Virtus"},
+        {"id": "3", "name": "T-Cross"},
+        {"id": "4", "name": "Amarok"}
+      ],
+      "4": [
+        {"id": "1", "name": "Hilux"},
+        {"id": "2", "name": "Corolla Cross"},
+        {"id": "3", "name": "Yaris"},
+        {"id": "4", "name": "SW4"}
+      ]
+    },
+    "2023": {
+      "1": [
+        {"id": "1", "name": "Onix"},
+        {"id": "2", "name": "Tracker"},
+        {"id": "3", "name": "Cruze"},
+        {"id": "4", "name": "Prisma"}
+      ],
+      "2": [
+        {"id": "1", "name": "Ranger"},
+        {"id": "2", "name": "Territory"},
+        {"id": "3", "name": "Focus"},
+        {"id": "4", "name": "EcoSport"}
+      ],
+      "3": [
+        {"id": "1", "name": "Gol Trend"},
+        {"id": "2", "name": "Virtus"},
+        {"id": "3", "name": "T-Cross"},
+        {"id": "4", "name": "Amarok"}
+      ],
+      "4": [
+        {"id": "1", "name": "Hilux"},
+        {"id": "2", "name": "Corolla Cross"},
+        {"id": "3", "name": "Yaris"},
+        {"id": "4", "name": "SW4"}
+      ]
+    }
+  },
+  "versions": {
+    "2025": {
+      "1": {
+        "1": [
+          {"id": "1", "name": "LTZ"},
+          {"id": "2", "name": "Premier"},
+          {"id": "3", "name": "Activ"}
+        ],
+        "2": [
+          {"id": "1", "name": "LTZ"},
+          {"id": "2", "name": "Premier"},
+          {"id": "3", "name": "Activ"}
+        ]
+      },
+      "2": {
+        "1": [
+          {"id": "1", "name": "XLT"},
+          {"id": "2", "name": "Lariat"},
+          {"id": "3", "name": "Platinum"}
+        ],
+        "2": [
+          {"id": "1", "name": "Trend"},
+          {"id": "2", "name": "Titanium"},
+          {"id": "3", "name": "ST-Line"}
+        ]
+      }
+    },
+    "2024": {
+      "1": {
+        "1": [
+          {"id": "1", "name": "LTZ"},
+          {"id": "2", "name": "Premier"},
+          {"id": "3", "name": "Activ"}
+        ],
+        "2": [
+          {"id": "1", "name": "LTZ"},
+          {"id": "2", "name": "Premier"},
+          {"id": "3", "name": "Activ"}
+        ]
+      },
+      "2": {
+        "1": [
+          {"id": "1", "name": "XLT"},
+          {"id": "2", "name": "Lariat"},
+          {"id": "3", "name": "Platinum"}
+        ],
+        "2": [
+          {"id": "1", "name": "Trend"},
+          {"id": "2", "name": "Titanium"},
+          {"id": "3", "name": "ST-Line"}
+        ]
+      }
+    },
+    "2023": {
+      "1": {
+        "1": [
+          {"id": "1", "name": "LTZ"},
+          {"id": "2", "name": "Premier"},
+          {"id": "3", "name": "Activ"}
+        ],
+        "2": [
+          {"id": "1", "name": "LTZ"},
+          {"id": "2", "name": "Premier"},
+          {"id": "3", "name": "Activ"}
+        ]
+      },
+      "2": {
+        "1": [
+          {"id": "1", "name": "XLT"},
+          {"id": "2", "name": "Lariat"},
+          {"id": "3", "name": "Platinum"}
+        ],
+        "2": [
+          {"id": "1", "name": "Trend"},
+          {"id": "2", "name": "Titanium"},
+          {"id": "3", "name": "ST-Line"}
+        ]
+      }
+    }
+  }
+}

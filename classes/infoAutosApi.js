@@ -197,15 +197,34 @@ class InfoAutosApi {
   // Obtener años disponibles
   async getYears() {
     try {
-      // Según la documentación, usar el endpoint correcto para años
-      const data = await this.makeRequest('/years');
-      console.log('📅 Años obtenidos:', data);
+      // Según la documentación, obtener años desde el endpoint de marcas
+      console.log('📅 Obteniendo años desde endpoint de marcas...');
+      const brandsData = await this.makeRequest('/brands');
+      console.log('🏷️ Datos de marcas obtenidos:', brandsData);
       
-      if (data && Array.isArray(data)) {
-        return data.map(year => ({
+      if (brandsData && Array.isArray(brandsData)) {
+        // Extraer años únicos de las marcas
+        const years = [...new Set(brandsData.map(brand => brand.year).filter(year => year))];
+        console.log('📅 Años extraídos de marcas:', years);
+        
+        return years.map(year => ({
           id: year,
           name: year.toString()
         }));
+      }
+      
+      // Fallback: si no hay años en marcas, usar endpoint alternativo
+      console.log('🔄 Fallback: probando endpoint alternativo para años...');
+      try {
+        const data = await this.makeRequest('/years');
+        if (data && Array.isArray(data)) {
+          return data.map(year => ({
+            id: year,
+            name: year.toString()
+          }));
+        }
+      } catch (fallbackError) {
+        console.log('⚠️ Endpoint alternativo también falló:', fallbackError.message);
       }
       
       return [];
@@ -218,12 +237,28 @@ class InfoAutosApi {
   // Obtener marcas por año
   async getBrands(year) {
     try {
-      // Según la documentación, usar el endpoint correcto para marcas
-      const data = await this.makeRequest(`/years/${year}/brands`);
-      console.log(`🏷️ Marcas obtenidas para año ${year}:`, data);
+      // Intentar endpoint específico por año primero
+      try {
+        const data = await this.makeRequest(`/years/${year}/brands`);
+        console.log(`🏷️ Marcas obtenidas para año ${year} (endpoint específico):`, data);
+        
+        if (data && Array.isArray(data)) {
+          return data.map(brand => ({
+            id: brand.id,
+            name: brand.name
+          }));
+        }
+      } catch (yearSpecificError) {
+        console.log(`⚠️ Endpoint específico por año falló, probando filtrado de marcas generales...`);
+      }
       
-      if (data && Array.isArray(data)) {
-        return data.map(brand => ({
+      // Fallback: filtrar marcas generales por año
+      const allBrands = await this.makeRequest('/brands');
+      if (allBrands && Array.isArray(allBrands)) {
+        const brandsForYear = allBrands.filter(brand => brand.year === year);
+        console.log(`🏷️ Marcas filtradas para año ${year} (desde marcas generales):`, brandsForYear);
+        
+        return brandsForYear.map(brand => ({
           id: brand.id,
           name: brand.name
         }));

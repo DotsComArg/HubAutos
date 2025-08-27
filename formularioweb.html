@@ -333,7 +333,10 @@
 // URL del backend existente (Vercel)
 const BACKEND_URL = "https://hubsautos.dotscomagency.com/api/auto-quote";
 
-// URL de la API de Info Autos (Vercel) - NUEVA INTEGRACIÓN
+// URL de la API de datos de vehículos (estáticos) - NUEVA INTEGRACIÓN
+const VEHICLE_DATA_API_URL = "https://hubsautos.dotscomagency.com/api/vehicles";
+
+// URL de la API de Info Autos (Vercel) - FALLBACK
 const INFOAUTOS_API_URL = "https://hubsautos.dotscomagency.com/api/infoautos";
 
 // ===========================================
@@ -342,12 +345,12 @@ const INFOAUTOS_API_URL = "https://hubsautos.dotscomagency.com/api/infoautos";
 const form = document.getElementById("form-cotiza-auto");
 let iti = null;
 
-// Cache para los datos de Info Autos
+// Cache para los datos de vehículos
 const cache = new Map();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos
 
 // ===========================================
-// FUNCIONES DE INFO AUTOS
+// FUNCIONES DE DATOS DE VEHÍCULOS
 // ===========================================
 
 // Función para obtener datos de la API con cache
@@ -363,7 +366,7 @@ async function fetchWithCache(endpoint) {
   }
 
   try {
-    const fullUrl = `${INFOAUTOS_API_URL}${endpoint}`;
+    const fullUrl = `${VEHICLE_DATA_API_URL}${endpoint}`;
     console.log(`🌐 Llamando a: ${fullUrl}`);
     
     const response = await fetch(fullUrl, {
@@ -395,6 +398,30 @@ async function fetchWithCache(endpoint) {
     }
   } catch (error) {
     console.error(`❌ Error en API call a ${endpoint}:`, error);
+    
+    // Si falla la API de datos estáticos, intentar con Info Autos como fallback
+    console.log('🔄 Intentando con Info Autos como fallback...');
+    try {
+      const fallbackUrl = `${INFOAUTOS_API_URL}${endpoint}`;
+      const fallbackResponse = await fetch(fallbackUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData.success) {
+          console.log('✅ Datos obtenidos de Info Autos como fallback');
+          return fallbackData.data;
+        }
+      }
+    } catch (fallbackError) {
+      console.log('⚠️ Fallback también falló:', fallbackError.message);
+    }
+    
     throw error; // Re-lanzar el error para manejarlo en las funciones de carga
   }
 }
@@ -504,7 +531,7 @@ function resetSelect(selectElement, placeholder, disabled = true) {
 }
 
 // ===========================================
-// INICIALIZACIÓN DE INFO AUTOS
+// INICIALIZACIÓN DE DATOS DE VEHÍCULOS
 // ===========================================
 
 // Cargar años al inicializar
