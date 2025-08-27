@@ -333,8 +333,8 @@
 // URL del backend existente (Vercel)
 const BACKEND_URL = "https://hubsautos.dotscomagency.com/api/auto-quote";
 
-// URL de la API de Info Autos (Vercel) - PRINCIPAL
-const INFOAUTOS_API_URL = "https://hubsautos.dotscomagency.com/api/infoautos";
+// URL del servicio de datos de vehículos (Vercel) - PRINCIPAL
+const VEHICLE_DATA_API_URL = "https://hubsautos.dotscomagency.com/api/vehicles";
 
 // ===========================================
 // INICIALIZACIÓN DEL FORMULARIO
@@ -363,8 +363,8 @@ async function fetchWithCache(endpoint) {
   }
 
   try {
-    const fullUrl = `${INFOAUTOS_API_URL}${endpoint}`;
-    console.log(`🌐 Llamando a Info Autos: ${fullUrl}`);
+    const fullUrl = `${VEHICLE_DATA_API_URL}${endpoint}`;
+    console.log(`🌐 Llamando al servicio de datos de vehículos: ${fullUrl}`);
     
     const response = await fetch(fullUrl, {
       method: 'GET',

@@ -1,345 +1,228 @@
+const axios = require('axios');
+
 class InfoAutosApi {
   constructor() {
-    // URLs separadas según la documentación de Info Autos
-    this.dataBaseUrl = 'https://api.infoauto.com.ar/cars/pub';  // Para datos (years, brands, models, versions)
-    this.authBaseUrl = 'https://api.infoauto.com.ar/cars/auth'; // Para autenticación (login, refresh)
-    
+    this.baseURL = 'https://api.infoauto.com.ar/cars/pub';
     this.accessToken = null;
     this.refreshToken = null;
     this.tokenExpiry = null;
-    this.isRefreshing = false;
-    this.refreshPromise = null;
-    this.lastRefreshTime = null;
-    this.refreshCount = 0;
   }
 
-  // Configurar tokens iniciales
   setTokens(accessToken, refreshToken) {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
-    // El access token expira en 1 hora, así que calculamos la expiración
-    this.tokenExpiry = Date.now() + (60 * 60 * 1000); // 1 hora
+    // Calcular expiración (1 hora desde ahora)
+    this.tokenExpiry = Date.now() + (60 * 60 * 1000);
   }
 
-  // Verificar si el token está expirado (con margen de seguridad de 5 minutos)
   isTokenExpired() {
-    if (!this.accessToken) return true;
-    
-    // Agregar margen de seguridad de 5 minutos para evitar llamadas con tokens casi expirados
-    const safetyMargin = 5 * 60 * 1000; // 5 minutos
-    return Date.now() >= (this.tokenExpiry - safetyMargin);
+    return !this.tokenExpiry || Date.now() >= this.tokenExpiry;
   }
 
-  // Refrescar el token (con límites para evitar abuso)
-  async refreshAccessToken() {
-    // Verificar si ya refrescamos recientemente (mínimo 5 minutos entre refrescos)
-    const minTimeBetweenRefreshes = 5 * 60 * 1000; // 5 minutos
-    if (this.lastRefreshTime && (Date.now() - this.lastRefreshTime) < minTimeBetweenRefreshes) {
-      console.log('⏳ Refresco reciente, esperando...');
-      const waitTime = minTimeBetweenRefreshes - (Date.now() - this.lastRefreshTime);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-
-    // Verificar límite de refrescos por hora (máximo 10 por hora)
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
-    if (this.lastRefreshTime && this.lastRefreshTime > oneHourAgo && this.refreshCount >= 10) {
-      throw new Error('Límite de refrescos por hora alcanzado. Espere antes de continuar.');
-    }
-
-    if (this.isRefreshing) {
-      return this.refreshPromise;
-    }
-
-    this.isRefreshing = true;
-    this.refreshPromise = this._performTokenRefresh();
-
+  async makeRequest(endpoint, params = {}) {
     try {
-      const result = await this.refreshPromise;
-      // Actualizar contadores
-      this.lastRefreshTime = Date.now();
-      this.refreshCount++;
-      return result;
-    } finally {
-      this.isRefreshing = false;
-      this.refreshPromise = null;
-    }
-  }
-
-  async _performTokenRefresh() {
-    try {
-      console.log('🔄 Refrescando access token...');
-      
-      // Intentar con el endpoint estándar primero (URL correcta según documentación)
-      let response = await fetch(`${this.authBaseUrl}/refresh`, {
-        method: 'POST',
+      const url = `${this.baseURL}${endpoint}`;
+      const config = {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.refreshToken}`
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${this.accessToken}`
+        },
+        params: {
+          ...params,
+          page: 1,
+          page_size: 100 // Obtener más resultados por página
         }
-      });
+      };
 
-      // Si falla, intentar con el endpoint alternativo
-      if (!response.ok) {
-        console.log('🔄 Primer endpoint falló, probando alternativo...');
-        response = await fetch(`${this.authBaseUrl}/token/refresh`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.refreshToken}`
-          }
-        });
-      }
-
-      if (!response.ok) {
-        throw new Error(`Error al refrescar token: ${response.status} - ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('📡 Respuesta de refresh:', data);
+      console.log(`🌐 Llamando a Info Autos: ${url}`);
+      const response = await axios.get(url, config);
       
-      if (data.access_token) {
-        this.accessToken = data.access_token;
-        this.tokenExpiry = Date.now() + (60 * 60 * 1000); // 1 hora
-        console.log('✅ Access token refrescado exitosamente');
-        return true;
-      } else if (data.token) {
-        // Algunas APIs usan 'token' en lugar de 'access_token'
-        this.accessToken = data.token;
-        this.tokenExpiry = Date.now() + (60 * 60 * 1000);
-        console.log('✅ Access token refrescado exitosamente (campo token)');
-        return true;
-      } else {
-        throw new Error('No se recibió access token en la respuesta');
-      }
+      console.log(`✅ Respuesta exitosa de Info Autos: ${response.status}`);
+      return response.data;
     } catch (error) {
-      console.error('❌ Error al refrescar access token:', error);
+      console.error(`❌ Error en llamada a Info Autos:`, error.response?.status, error.response?.statusText);
       throw error;
     }
   }
 
-  // Obtener headers con autenticación
-  async getAuthHeaders() {
-    // Solo refrescar si el token está realmente expirado
-    if (this.isTokenExpired()) {
-      console.log('🔄 Token expirado, refrescando...');
-      await this.refreshAccessToken();
-    } else {
-      console.log('✅ Usando token existente válido');
-    }
-
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.accessToken}`
-    };
-  }
-
-  // Hacer llamada a la API con manejo de errores
-  async makeRequest(endpoint, options = {}) {
-    try {
-      const headers = await this.getAuthHeaders();
-      console.log(`🔑 Headers de autenticación:`, headers);
-      
-      // Usar la URL de datos para las consultas de catálogo
-      const fullUrl = `${this.dataBaseUrl}${endpoint}`;
-      console.log(`🌐 Llamando a: ${fullUrl}`);
-      
-      const response = await fetch(fullUrl, {
-        ...options,
-        headers: {
-          ...headers,
-          ...options.headers
-        }
-      });
-
-      console.log(`📡 Respuesta: ${response.status} ${response.statusText}`);
-      console.log(`📡 Headers de respuesta:`, Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.log('🔄 Token expirado (401), intentando refrescar...');
-          // Token expirado, intentar refrescar
-          await this.refreshAccessToken();
-          // Reintentar la llamada
-          const retryResponse = await fetch(fullUrl, {
-            ...options,
-            headers: {
-              ...(await this.getAuthHeaders()),
-              ...options.headers
-            }
-          });
-
-          if (!retryResponse.ok) {
-            throw new Error(`Error en API: ${retryResponse.status} - ${retryResponse.statusText}`);
-          }
-
-          return await retryResponse.json();
-        }
-        
-        // Para otros errores, intentar obtener más detalles
-        let errorDetails = '';
-        try {
-          const errorBody = await response.text();
-          errorDetails = errorBody ? ` - ${errorBody}` : '';
-        } catch (e) {
-          // Ignorar errores al leer el body
-        }
-        
-        throw new Error(`Error en API: ${response.status} - ${response.statusText}${errorDetails}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`❌ Error en llamada a API ${endpoint}:`, error);
-      throw error;
-    }
-  }
-
-  // Obtener años disponibles
+  // Obtener años disponibles - Extraer de /brands/ usando prices_from y prices_to
   async getYears() {
     try {
-      // Según la documentación, usar el endpoint de marcas para obtener años
-      console.log('📅 Obteniendo años desde endpoint de marcas...');
-      const brandsData = await this.makeRequest('/brands/');
-      console.log('🏷️ Datos de marcas obtenidos:', brandsData);
-      
-      if (brandsData && Array.isArray(brandsData)) {
-        // Extraer años únicos de las marcas
-        const years = [...new Set(brandsData.map(brand => brand.year).filter(year => year))];
-        console.log('📅 Años extraídos de marcas:', years);
-        
-        return years.map(year => ({
-          id: year,
-          name: year.toString()
-        }));
+      const brands = await this.makeRequest('/brands/', {
+        query_mode: 'matching',
+        list_price: true,
+        prices: true
+      });
+
+      if (!brands || !Array.isArray(brands)) {
+        console.log('⚠️ Respuesta de brands no válida');
+        return [];
       }
-      
-      // Si no hay años en marcas, usar endpoint de año actual
-      console.log('🔄 Fallback: probando endpoint de año actual...');
-      try {
-        const currentYear = await this.makeRequest('/current_year');
-        if (currentYear) {
-          return [{
-            id: currentYear.toString(),
-            name: currentYear.toString()
-          }];
+
+      // Extraer años únicos de prices_from y prices_to
+      const years = new Set();
+      brands.forEach(brand => {
+        if (brand.prices_from && brand.prices_to) {
+          for (let year = brand.prices_from; year <= brand.prices_to; year++) {
+            years.add(year);
+          }
         }
-      } catch (fallbackError) {
-        console.log('⚠️ Endpoint de año actual también falló:', fallbackError.message);
-      }
+      });
+
+      // Convertir a array y ordenar
+      const yearsArray = Array.from(years).sort((a, b) => b - a);
       
-      return [];
+      // Convertir a formato esperado por el frontend
+      return yearsArray.map(year => ({
+        id: year.toString(),
+        name: year.toString()
+      }));
+
     } catch (error) {
-      console.error('❌ Error obteniendo años:', error);
+      console.error('❌ Error obteniendo años desde brands:', error);
       throw error;
     }
   }
 
-  // Obtener marcas por año
+  // Obtener marcas por año - Filtrar /brands/ por año usando prices_from y prices_to
   async getBrands(year) {
     try {
-      // Según la documentación, usar el endpoint de marcas
-      const data = await this.makeRequest('/brands/');
-      console.log(`🏷️ Todas las marcas obtenidas:`, data);
-      
-      if (data && Array.isArray(data)) {
-        // Filtrar marcas por año si se especifica
-        if (year) {
-          const brandsForYear = data.filter(brand => brand.year === parseInt(year));
-          console.log(`🏷️ Marcas filtradas para año ${year}:`, brandsForYear);
-          return brandsForYear.map(brand => ({
-            id: brand.id,
-            name: brand.name
-          }));
-        } else {
-          // Si no se especifica año, devolver todas las marcas
-          return data.map(brand => ({
-            id: brand.id,
-            name: brand.name
-          }));
-        }
+      const brands = await this.makeRequest('/brands/', {
+        query_mode: 'matching',
+        list_price: true,
+        prices: true
+      });
+
+      if (!brands || !Array.isArray(brands)) {
+        console.log('⚠️ Respuesta de brands no válida');
+        return [];
       }
-      
-      return [];
+
+      // Filtrar marcas que tengan precios para el año especificado
+      const filteredBrands = brands.filter(brand => 
+        brand.prices && 
+        brand.prices_from && 
+        brand.prices_to && 
+        year >= brand.prices_from && 
+        year <= brand.prices_to
+      );
+
+      // Convertir a formato esperado por el frontend
+      return filteredBrands.map(brand => ({
+        id: brand.id.toString(),
+        name: brand.name
+      }));
+
     } catch (error) {
       console.error(`❌ Error obteniendo marcas para año ${year}:`, error);
       throw error;
     }
   }
 
-  // Obtener modelos por marca y año
+  // Obtener modelos por marca y año - Usar /brands/{brand_id}/models/
   async getModels(year, brandId) {
     try {
-      // Según la documentación, usar el endpoint correcto para modelos
-      const data = await this.makeRequest(`/brands/${brandId}/models/`);
-      console.log(`🚗 Modelos obtenidos para marca ${brandId}:`, data);
-      
-      if (data && Array.isArray(data)) {
-        // Filtrar por año si se especifica
-        if (year) {
-          const modelsForYear = data.filter(model => model.year === parseInt(year));
-          console.log(`🚗 Modelos filtrados para año ${year}:`, modelsForYear);
-          return modelsForYear.map(model => ({
-            id: model.id || model.codia,
-            name: model.name
-          }));
-        } else {
-          return data.map(model => ({
-            id: model.id || model.codia,
-            name: model.name
-          }));
-        }
+      const models = await this.makeRequest(`/brands/${brandId}/models/`, {
+        query_mode: 'matching'
+      });
+
+      if (!models || !Array.isArray(models)) {
+        console.log('⚠️ Respuesta de models no válida');
+        return [];
       }
-      
-      return [];
+
+      // Filtrar modelos que tengan precios para el año especificado
+      const filteredModels = models.filter(model => 
+        model.prices && 
+        model.prices_from && 
+        model.prices_to && 
+        year >= model.prices_from && 
+        year <= model.prices_to
+      );
+
+      // Convertir a formato esperado por el frontend
+      return filteredModels.map(model => ({
+        id: model.codia.toString(),
+        name: model.description || model.group?.name || 'Modelo sin nombre'
+      }));
+
     } catch (error) {
       console.error(`❌ Error obteniendo modelos para marca ${brandId} año ${year}:`, error);
       throw error;
     }
   }
 
-  // Obtener versiones por modelo, marca y año
+  // Obtener versiones por modelo - Usar /models/{codia}/features/
   async getVersions(year, brandId, modelId) {
     try {
-      // Según la documentación, usar el endpoint de características del modelo
-      const data = await this.makeRequest(`/models/${modelId}/features/`);
-      console.log(`🔧 Características obtenidas para modelo ${modelId}:`, data);
+      console.log(`🔧 Obteniendo características para modelo ${modelId}...`);
       
-      if (data && Array.isArray(data)) {
-        // Convertir características en versiones
-        const versions = data.map(feature => ({
-          id: feature.id,
-          name: feature.name || feature.value
-        }));
-        
-        console.log(`🔧 Versiones generadas para modelo ${modelId}:`, versions);
-        return versions;
+      const features = await this.makeRequest(`/models/${modelId}/features/`);
+
+      if (!features || !Array.isArray(features)) {
+        console.log('⚠️ Respuesta de features no válida');
+        return [];
       }
-      
-      // Fallback: crear versión básica
-      return [{
-        id: '1',
-        name: 'Versión Estándar'
-      }];
+
+      // Filtrar solo características relevantes para el formulario
+      // Priorizar características importantes como motor, transmisión, etc.
+      const relevantFeatures = features.filter(feature => {
+        // Incluir características importantes
+        const importantCategories = ['Motor y transmisión', 'Datos técnicos'];
+        const importantFeatures = ['Combustible', 'Alimentación', 'Tracción', 'Caja', 'Cilindrada', 'Potencia HP'];
+        
+        return importantCategories.includes(feature.category_name) || 
+               importantFeatures.includes(feature.description);
+      });
+
+      // Si no hay características relevantes, usar las primeras 5 características
+      const featuresToUse = relevantFeatures.length > 0 ? relevantFeatures : features.slice(0, 5);
+
+      // Convertir características a versiones
+      const versions = featuresToUse.map(feature => {
+        let versionName = feature.description;
+        
+        // Agregar valor si es relevante
+        if (feature.value_description && feature.value_description !== 'string') {
+          versionName += `: ${feature.value_description}`;
+        } else if (feature.value && feature.value !== 'string' && feature.value !== 0) {
+          if (typeof feature.value === 'boolean') {
+            versionName += `: ${feature.value ? 'Sí' : 'No'}`;
+          } else {
+            versionName += `: ${feature.value}`;
+          }
+        }
+
+        return {
+          id: feature.id.toString(),
+          name: versionName
+        };
+      });
+
+      console.log(`🔧 Versiones generadas para modelo ${modelId}:`, versions.length);
+      return versions;
+
     } catch (error) {
       console.error(`❌ Error obteniendo versiones para modelo ${modelId}:`, error);
       
-      // Fallback: versión básica
-      return [{
-        id: '1',
-        name: 'Versión Estándar'
-      }];
+      // Fallback: crear versiones básicas
+      console.log(`🔧 Usando versiones de fallback para modelo ${modelId}`);
+      return [
+        { id: "1", name: "Versión Estándar" },
+        { id: "2", name: "Versión Premium" },
+        { id: "3", name: "Versión Sport" }
+      ];
     }
   }
 
-  // Verificar estado de la conexión
+  // Verificar conexión
   async checkConnection() {
     try {
-      // Según la documentación, usar el endpoint correcto para verificar conexión
-      const data = await this.makeRequest('/brands');
+      const response = await this.makeRequest('/brands/', { page_size: 1 });
       return {
         success: true,
         message: 'Conexión exitosa con Info Autos',
-        data: data
+        data: response
       };
     } catch (error) {
       return {
@@ -350,19 +233,37 @@ class InfoAutosApi {
     }
   }
 
-  // Obtener estadísticas de uso de tokens
+  // Obtener estadísticas de tokens
   getTokenStats() {
     return {
       hasAccessToken: !!this.accessToken,
       hasRefreshToken: !!this.refreshToken,
-      tokenExpiry: this.tokenExpiry,
       isExpired: this.isTokenExpired(),
-      currentTime: Date.now(),
-      timeUntilExpiry: this.tokenExpiry ? this.tokenExpiry - Date.now() : null,
-      lastRefreshTime: this.lastRefreshTime,
-      refreshCount: this.refreshCount,
-      timeSinceLastRefresh: this.lastRefreshTime ? Date.now() - this.lastRefreshTime : null
+      expiresAt: this.tokenExpiry ? new Date(this.tokenExpiry).toISOString() : null
     };
+  }
+
+  // Refrescar token de acceso
+  async refreshAccessToken() {
+    try {
+      console.log('🔄 Refrescando token de acceso...');
+      
+      const response = await axios.post('https://api.infoauto.com.ar/auth/refresh', {
+        refresh_token: this.refreshToken
+      });
+
+      if (response.data.access_token) {
+        this.accessToken = response.data.access_token;
+        this.tokenExpiry = Date.now() + (60 * 60 * 1000); // 1 hora
+        console.log('✅ Token refrescado correctamente');
+        return true;
+      } else {
+        throw new Error('No se recibió nuevo access_token');
+      }
+    } catch (error) {
+      console.error('❌ Error refrescando token:', error);
+      throw error;
+    }
   }
 }
 
