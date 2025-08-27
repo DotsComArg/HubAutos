@@ -333,10 +333,7 @@
 // URL del backend existente (Vercel)
 const BACKEND_URL = "https://hubsautos.dotscomagency.com/api/auto-quote";
 
-// URL de la API de datos de vehículos (estáticos) - NUEVA INTEGRACIÓN
-const VEHICLE_DATA_API_URL = "https://hubsautos.dotscomagency.com/api/vehicles";
-
-// URL de la API de Info Autos (Vercel) - FALLBACK
+// URL de la API de Info Autos (Vercel) - PRINCIPAL
 const INFOAUTOS_API_URL = "https://hubsautos.dotscomagency.com/api/infoautos";
 
 // ===========================================
@@ -345,12 +342,12 @@ const INFOAUTOS_API_URL = "https://hubsautos.dotscomagency.com/api/infoautos";
 const form = document.getElementById("form-cotiza-auto");
 let iti = null;
 
-// Cache para los datos de vehículos
+// Cache para los datos de Info Autos
 const cache = new Map();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos
 
 // ===========================================
-// FUNCIONES DE DATOS DE VEHÍCULOS
+// FUNCIONES DE INFO AUTOS
 // ===========================================
 
 // Función para obtener datos de la API con cache
@@ -366,8 +363,8 @@ async function fetchWithCache(endpoint) {
   }
 
   try {
-    const fullUrl = `${VEHICLE_DATA_API_URL}${endpoint}`;
-    console.log(`🌐 Llamando a: ${fullUrl}`);
+    const fullUrl = `${INFOAUTOS_API_URL}${endpoint}`;
+    console.log(`🌐 Llamando a Info Autos: ${fullUrl}`);
     
     const response = await fetch(fullUrl, {
       method: 'GET',
@@ -398,30 +395,6 @@ async function fetchWithCache(endpoint) {
     }
   } catch (error) {
     console.error(`❌ Error en API call a ${endpoint}:`, error);
-    
-    // Si falla la API de datos estáticos, intentar con Info Autos como fallback
-    console.log('🔄 Intentando con Info Autos como fallback...');
-    try {
-      const fallbackUrl = `${INFOAUTOS_API_URL}${endpoint}`;
-      const fallbackResponse = await fetch(fallbackUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json();
-        if (fallbackData.success) {
-          console.log('✅ Datos obtenidos de Info Autos como fallback');
-          return fallbackData.data;
-        }
-      }
-    } catch (fallbackError) {
-      console.log('⚠️ Fallback también falló:', fallbackError.message);
-    }
-    
     throw error; // Re-lanzar el error para manejarlo en las funciones de carga
   }
 }
@@ -531,7 +504,7 @@ function resetSelect(selectElement, placeholder, disabled = true) {
 }
 
 // ===========================================
-// INICIALIZACIÓN DE DATOS DE VEHÍCULOS
+// INICIALIZACIÓN DE INFO AUTOS
 // ===========================================
 
 // Cargar años al inicializar
@@ -540,9 +513,9 @@ async function loadYears() {
     showLoading(document.getElementById('year'), 'Cargando años...');
     const years = await fetchWithCache('/years');
     populateSelect(document.getElementById('year'), years, 'Seleccioná año');
-    console.log('✅ Años cargados:', years.length);
+    console.log('✅ Años cargados desde Info Autos:', years.length);
   } catch (error) {
-    showError(document.getElementById('year'), 'Error cargando años');
+    showError(document.getElementById('year'), 'Error cargando años desde Info Autos');
     console.error('Error cargando años:', error);
   }
 }
@@ -559,9 +532,9 @@ async function loadBrands(year) {
     showLoading(document.getElementById('brand'), 'Cargando marcas...');
     const brands = await fetchWithCache(`/brands/${year}`);
     populateSelect(document.getElementById('brand'), brands, 'Seleccioná marca');
-    console.log(`✅ Marcas cargadas para año ${year}:`, brands.length);
+    console.log(`✅ Marcas cargadas desde Info Autos para año ${year}:`, brands.length);
   } catch (error) {
-    showError(document.getElementById('brand'), 'Error cargando marcas');
+    showError(document.getElementById('brand'), 'Error cargando marcas desde Info Autos');
     console.error('Error cargando marcas:', error);
   }
 }
@@ -577,9 +550,9 @@ async function loadModels(year, brandId) {
     showLoading(document.getElementById('model'), 'Cargando modelos...');
     const models = await fetchWithCache(`/models/${year}/${brandId}`);
     populateSelect(document.getElementById('model'), models, 'Seleccioná modelo');
-    console.log(`✅ Modelos cargados para marca ${brandId}:`, models.length);
+    console.log(`✅ Modelos cargados desde Info Autos para marca ${brandId}:`, models.length);
   } catch (error) {
-    showError(document.getElementById('model'), 'Error cargando modelos');
+    showError(document.getElementById('model'), 'Error cargando modelos desde Info Autos');
     console.error('Error cargando modelos:', error);
   }
 }
@@ -594,9 +567,9 @@ async function loadVersions(year, brandId, modelId) {
     showLoading(document.getElementById('version'), 'Cargando versiones...');
     const versions = await fetchWithCache(`/versions/${year}/${brandId}/${modelId}`);
     populateSelect(document.getElementById('version'), versions, 'Seleccioná versión');
-    console.log(`✅ Versiones cargadas para modelo ${modelId}:`, versions.length);
+    console.log(`✅ Versiones cargadas desde Info Autos para modelo ${modelId}:`, versions.length);
   } catch (error) {
-    showError(document.getElementById('version'), 'Error cargando versiones');
+    showError(document.getElementById('version'), 'Error cargando versiones desde Info Autos');
     console.error('Error cargando versiones:', error);
   }
 }

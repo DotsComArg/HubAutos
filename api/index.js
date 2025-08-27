@@ -26,7 +26,7 @@ app.use('/api/form-entries', formEntryRoutes);
 // Rutas de Info Autos API
 app.use('/api/infoautos', infoAutosRoutes);
 
-// Rutas de datos de vehículos (estáticos)
+// Rutas de datos de vehículos (Info Autos)
 app.use('/api/vehicles', vehicleDataRoutes);
 
 const port = process.env.PORT || 3000;

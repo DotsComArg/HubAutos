@@ -16,11 +16,16 @@ const errorHandler = (err, req, res, next) => {
 // Endpoint de prueba de conexión
 router.get('/health', async (req, res) => {
   try {
-    const stats = vehicleService.getDataStats();
+    const connection = await vehicleService.checkConnection();
+    const tokenStats = vehicleService.getTokenStats();
+    
     res.json({
       success: true,
       message: 'Servicio de datos de vehículos funcionando correctamente',
-      data: stats
+      data: {
+        connection,
+        tokenStats
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -34,12 +39,16 @@ router.get('/health', async (req, res) => {
 router.get('/years', async (req, res) => {
   try {
     console.log('📅 Solicitando años disponibles...');
+    
+    // Refrescar tokens si es necesario
+    await vehicleService.refreshTokensIfNeeded();
+    
     const years = await vehicleService.getYears();
     
     res.json({
       success: true,
       data: years,
-      source: 'static'
+      source: 'infoautos'
     });
   } catch (error) {
     console.error('❌ Error obteniendo años:', error);
@@ -63,12 +72,15 @@ router.get('/brands/:year', async (req, res) => {
       });
     }
     
+    // Refrescar tokens si es necesario
+    await vehicleService.refreshTokensIfNeeded();
+    
     const brands = await vehicleService.getBrands(year);
     
     res.json({
       success: true,
       data: brands,
-      source: 'static',
+      source: 'infoautos',
       year: year
     });
   } catch (error) {
@@ -100,12 +112,15 @@ router.get('/models/:year/:brandId', async (req, res) => {
       });
     }
     
+    // Refrescar tokens si es necesario
+    await vehicleService.refreshTokensIfNeeded();
+    
     const models = await vehicleService.getModels(year, brandId);
     
     res.json({
       success: true,
       data: models,
-      source: 'static',
+      source: 'infoautos',
       year: year,
       brandId: brandId
     });
@@ -145,12 +160,15 @@ router.get('/versions/:year/:brandId/:modelId', async (req, res) => {
       });
     }
     
+    // Refrescar tokens si es necesario
+    await vehicleService.refreshTokensIfNeeded();
+    
     const versions = await vehicleService.getVersions(year, brandId, modelId);
     
     res.json({
       success: true,
       data: versions,
-      source: 'static',
+      source: 'infoautos',
       year: year,
       brandId: brandId,
       modelId: modelId
@@ -164,41 +182,10 @@ router.get('/versions/:year/:brandId/:modelId', async (req, res) => {
   }
 });
 
-// Búsqueda de vehículos por texto
-router.get('/search', async (req, res) => {
-  try {
-    const { q, limit = 10 } = req.query;
-    
-    if (!q || q.trim().length < 2) {
-      return res.status(400).json({
-        success: false,
-        error: 'Query de búsqueda debe tener al menos 2 caracteres'
-      });
-    }
-    
-    console.log(`🔍 Buscando vehículos con query: "${q}"`);
-    const results = await vehicleService.searchVehicles(q.trim(), parseInt(limit));
-    
-    res.json({
-      success: true,
-      data: results,
-      source: 'static',
-      query: q,
-      total: results.length
-    });
-  } catch (error) {
-    console.error('❌ Error en búsqueda de vehículos:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Obtener estadísticas de datos disponibles
+// Obtener estadísticas de tokens
 router.get('/stats', async (req, res) => {
   try {
-    const stats = vehicleService.getDataStats();
+    const stats = vehicleService.getTokenStats();
     
     res.json({
       success: true,
@@ -206,6 +193,26 @@ router.get('/stats', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error obteniendo estadísticas:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Forzar refresh de tokens
+router.post('/refresh-tokens', async (req, res) => {
+  try {
+    await vehicleService.refreshTokensIfNeeded();
+    const stats = vehicleService.getTokenStats();
+    
+    res.json({
+      success: true,
+      message: 'Tokens refrescados correctamente',
+      data: stats
+    });
+  } catch (error) {
+    console.error('❌ Error refrescando tokens:', error);
     res.status(500).json({
       success: false,
       error: error.message
