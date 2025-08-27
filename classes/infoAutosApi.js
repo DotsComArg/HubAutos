@@ -220,21 +220,71 @@ class InfoAutosApi {
     try {
       console.log(`🏷️ Obteniendo TODAS las marcas disponibles...`);
       
-      const brands = await this.makeRequest('/brands/', {
+      let allBrands = [];
+      let currentPage = 1;
+      let totalPages = 1;
+      
+      // Primera llamada para obtener headers de paginación
+      const firstResponse = await this.makeRequest('/brands/', {
         query_mode: 'matching',
         list_price: true,
-        prices: true
-      });
+        prices: true,
+        page: currentPage,
+        page_size: 20
+      }, true); // getHeaders = true para obtener los headers
+      
+      if (firstResponse.data && Array.isArray(firstResponse.data)) {
+        allBrands = firstResponse.data;
+        
+        // Extraer información de paginación del header x-pagination
+        if (firstResponse.headers && firstResponse.headers['x-pagination']) {
+          try {
+            const paginationInfo = JSON.parse(firstResponse.headers['x-pagination']);
+            totalPages = paginationInfo.total_pages;
+            console.log(`📊 Paginación detectada: ${totalPages} páginas, ${paginationInfo.total} marcas totales`);
+          } catch (parseError) {
+            console.warn('⚠️ No se pudo parsear header de paginación:', parseError);
+          }
+        }
+        
+        // Obtener páginas restantes
+        while (currentPage < totalPages) {
+          currentPage++;
+          console.log(`📄 Obteniendo página ${currentPage} de ${totalPages}...`);
+          
+          try {
+            const nextPageData = await this.makeRequest('/brands/', {
+              query_mode: 'matching',
+              list_price: true,
+              prices: true,
+              page: currentPage,
+              page_size: 20
+            });
+            
+            if (nextPageData && Array.isArray(nextPageData)) {
+              allBrands = allBrands.concat(nextPageData);
+              console.log(`✅ Página ${currentPage} obtenida: ${nextPageData.length} marcas`);
+            }
+            
+            // Rate limiting - esperar 100ms entre requests
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+          } catch (pageError) {
+            console.error(`❌ Error obteniendo página ${currentPage}:`, pageError);
+            break; // Salir del loop si hay error
+          }
+        }
+      }
 
-      if (!brands || !Array.isArray(brands)) {
+      if (!allBrands || !Array.isArray(allBrands)) {
         console.log('⚠️ Respuesta de brands no válida');
         return [];
       }
 
-      console.log(`📊 Total de marcas obtenidas: ${brands.length}`);
+      console.log(`📊 Total de marcas obtenidas: ${allBrands.length}`);
 
       // Convertir a formato esperado por el frontend (sin filtrar por año)
-      const result = brands.map(brand => ({
+      const result = allBrands.map(brand => ({
         id: brand.id.toString(),
         name: brand.name
       }));
