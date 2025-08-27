@@ -558,14 +558,14 @@ async function loadModels(brandId) {
 }
 
 // Cargar versiones cuando se selecciona un modelo
-async function loadVersions(year, brandId, modelId) {
+async function loadVersions(brandId, modelId) {
   try {
     // Resetear select de versiones
     resetSelect(document.getElementById('version'), 'Seleccioná versión');
 
-    // Cargar versiones - Usar la nueva ruta /brands/{brandId}/models/{modelId}/versions
+    // Cargar versiones - Usar la nueva ruta /brands/{brandId}/models/{modelId}/versions (sin año)
     showLoading(document.getElementById('version'), 'Cargando versiones...');
-    const versions = await fetchWithCache(`/brands/${brandId}/models/${modelId}/versions?year=${year}`);
+    const versions = await fetchWithCache(`/brands/${brandId}/models/${modelId}/versions`);
     populateSelect(document.getElementById('version'), versions, 'Seleccioná versión');
     console.log(`✅ Versiones cargadas desde Info Autos para modelo ${modelId}:`, versions.length);
   } catch (error) {
@@ -609,7 +609,7 @@ $(document).ready(function() {
     const brandId = $('#brand').val();
     console.log(`🚗 Modelo seleccionado: ${modelId} para marca ${brandId} año ${year}`);
     if (modelId && year && brandId) {
-      await loadVersions(year, brandId, modelId);
+      await loadVersions(brandId, modelId);
     }
   });
 });

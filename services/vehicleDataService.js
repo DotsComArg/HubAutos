@@ -88,11 +88,11 @@ class VehicleDataService {
     }
   }
 
-  // Obtener versiones por modelo, marca y año
-  async getVersions(year, brandId, modelId) {
+  // Obtener versiones por modelo, marca (sin filtrar por año)
+  async getVersions(brandId, modelId) {
     try {
-      console.log(`🔧 Obteniendo versiones para modelo ${modelId} marca ${brandId} año ${year} desde Info Autos...`);
-      const versions = await this.infoAutosApi.getVersions(year, brandId, modelId);
+      console.log(`🔧 Obteniendo versiones para modelo ${modelId} marca ${brandId} desde Info Autos...`);
+      const versions = await this.infoAutosApi.getVersions(brandId, modelId);
       console.log(`✅ Versiones obtenidas para modelo ${modelId}: ${versions.length}`);
       
       if (versions && versions.length > 0) {

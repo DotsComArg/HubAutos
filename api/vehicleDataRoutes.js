@@ -132,20 +132,12 @@ router.get('/brands/:brandId/models', async (req, res) => {
   }
 });
 
-// Obtener versiones por modelo, marca y año
+// Obtener versiones por modelo y marca (sin filtrar por año)
 router.get('/brands/:brandId/models/:modelId/versions', async (req, res) => {
   try {
     const { brandId, modelId } = req.params;
-    const { year } = req.query; // El año viene como query parameter
     
-    console.log(`🔧 Solicitando versiones para modelo ${modelId} marca ${brandId} año ${year}...`);
-    
-    if (!year || isNaN(year)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Año requerido como query parameter (ej: ?year=2024)'
-      });
-    }
+    console.log(`🔧 Solicitando TODAS las versiones para modelo ${modelId} marca ${brandId}...`);
     
     if (!brandId) {
       return res.status(400).json({
@@ -164,13 +156,13 @@ router.get('/brands/:brandId/models/:modelId/versions', async (req, res) => {
     // Refrescar tokens si es necesario
     await vehicleService.refreshTokensIfNeeded();
     
-    const versions = await vehicleService.getVersions(year, brandId, modelId);
+    // Obtener todas las versiones del modelo sin filtrar por año
+    const versions = await vehicleService.getVersions(brandId, modelId);
     
     res.json({
       success: true,
       data: versions,
       source: 'infoautos',
-      year: year,
       brandId: brandId,
       modelId: modelId
     });

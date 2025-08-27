@@ -366,10 +366,10 @@ class InfoAutosApi {
     }
   }
 
-  // Obtener versiones por modelo - Usar /brands/{brand_id}/groups/{group_id}/models/
-  async getVersions(year, brandId, modelId) {
+  // Obtener TODAS las versiones de un modelo (sin filtrar por año)
+  async getVersions(brandId, modelId) {
     try {
-      console.log(`🔧 Obteniendo versiones para grupo ${modelId} de marca ${brandId} año ${year}...`);
+      console.log(`🔧 Obteniendo TODAS las versiones para grupo ${modelId} de marca ${brandId}...`);
       
       let allVersions = [];
       let currentPage = 1;
@@ -429,19 +429,8 @@ class InfoAutosApi {
 
       console.log(`📊 Total de versiones obtenidas para grupo ${modelId}: ${allVersions.length}`);
 
-      // Filtrar versiones que tengan precios para el año especificado
-      const filteredVersions = allVersions.filter(version => 
-        version.prices && 
-        version.prices_from && 
-        version.prices_to && 
-        year >= version.prices_from && 
-        year <= version.prices_to
-      );
-
-      console.log(`📊 Version filtradas para año ${year}: ${filteredVersions.length}`);
-
-      // Convertir a formato esperado por el frontend
-      const formattedVersions = filteredVersions.map(version => {
+      // Convertir a formato esperado por el frontend (sin filtrar por año)
+      const formattedVersions = allVersions.map(version => {
         let versionName = version.description || 'Versión sin nombre';
         
         // Remover el nombre del modelo del inicio de la descripción si está presente
@@ -461,10 +450,10 @@ class InfoAutosApi {
         };
       });
 
-      console.log(`🔧 Versiones finales para grupo ${modelId} año ${year}:`, formattedVersions.length);
+      console.log(`🔧 Versiones finales para grupo ${modelId} (sin filtrar por año):`, formattedVersions.length);
       
       if (formattedVersions.length === 0) {
-        console.log(`⚠️ No se encontraron versiones para grupo ${modelId} año ${year}, usando fallback`);
+        console.log(`⚠️ No se encontraron versiones para grupo ${modelId}, usando fallback`);
         // Fallback: crear versiones básicas
         return [
           { id: "1", name: "Versión Estándar" },
