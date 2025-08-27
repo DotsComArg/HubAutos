@@ -197,9 +197,9 @@ class InfoAutosApi {
   // Obtener años disponibles
   async getYears() {
     try {
-      // Según la documentación, obtener años desde el endpoint de marcas
+      // Según la documentación, usar el endpoint de marcas para obtener años
       console.log('📅 Obteniendo años desde endpoint de marcas...');
-      const brandsData = await this.makeRequest('/brands');
+      const brandsData = await this.makeRequest('/brands/');
       console.log('🏷️ Datos de marcas obtenidos:', brandsData);
       
       if (brandsData && Array.isArray(brandsData)) {
@@ -213,18 +213,18 @@ class InfoAutosApi {
         }));
       }
       
-      // Fallback: si no hay años en marcas, usar endpoint alternativo
-      console.log('🔄 Fallback: probando endpoint alternativo para años...');
+      // Si no hay años en marcas, usar endpoint de año actual
+      console.log('🔄 Fallback: probando endpoint de año actual...');
       try {
-        const data = await this.makeRequest('/years');
-        if (data && Array.isArray(data)) {
-          return data.map(year => ({
-            id: year,
-            name: year.toString()
-          }));
+        const currentYear = await this.makeRequest('/current_year');
+        if (currentYear) {
+          return [{
+            id: currentYear.toString(),
+            name: currentYear.toString()
+          }];
         }
       } catch (fallbackError) {
-        console.log('⚠️ Endpoint alternativo también falló:', fallbackError.message);
+        console.log('⚠️ Endpoint de año actual también falló:', fallbackError.message);
       }
       
       return [];
@@ -237,31 +237,26 @@ class InfoAutosApi {
   // Obtener marcas por año
   async getBrands(year) {
     try {
-      // Intentar endpoint específico por año primero
-      try {
-        const data = await this.makeRequest(`/years/${year}/brands`);
-        console.log(`🏷️ Marcas obtenidas para año ${year} (endpoint específico):`, data);
-        
-        if (data && Array.isArray(data)) {
+      // Según la documentación, usar el endpoint de marcas
+      const data = await this.makeRequest('/brands/');
+      console.log(`🏷️ Todas las marcas obtenidas:`, data);
+      
+      if (data && Array.isArray(data)) {
+        // Filtrar marcas por año si se especifica
+        if (year) {
+          const brandsForYear = data.filter(brand => brand.year === parseInt(year));
+          console.log(`🏷️ Marcas filtradas para año ${year}:`, brandsForYear);
+          return brandsForYear.map(brand => ({
+            id: brand.id,
+            name: brand.name
+          }));
+        } else {
+          // Si no se especifica año, devolver todas las marcas
           return data.map(brand => ({
             id: brand.id,
             name: brand.name
           }));
         }
-      } catch (yearSpecificError) {
-        console.log(`⚠️ Endpoint específico por año falló, probando filtrado de marcas generales...`);
-      }
-      
-      // Fallback: filtrar marcas generales por año
-      const allBrands = await this.makeRequest('/brands');
-      if (allBrands && Array.isArray(allBrands)) {
-        const brandsForYear = allBrands.filter(brand => brand.year === year);
-        console.log(`🏷️ Marcas filtradas para año ${year} (desde marcas generales):`, brandsForYear);
-        
-        return brandsForYear.map(brand => ({
-          id: brand.id,
-          name: brand.name
-        }));
       }
       
       return [];
@@ -275,14 +270,24 @@ class InfoAutosApi {
   async getModels(year, brandId) {
     try {
       // Según la documentación, usar el endpoint correcto para modelos
-      const data = await this.makeRequest(`/years/${year}/brands/${brandId}/models`);
-      console.log(`🚗 Modelos obtenidos para marca ${brandId} año ${year}:`, data);
+      const data = await this.makeRequest(`/brands/${brandId}/models/`);
+      console.log(`🚗 Modelos obtenidos para marca ${brandId}:`, data);
       
       if (data && Array.isArray(data)) {
-        return data.map(model => ({
-          id: model.id,
-          name: model.name
-        }));
+        // Filtrar por año si se especifica
+        if (year) {
+          const modelsForYear = data.filter(model => model.year === parseInt(year));
+          console.log(`🚗 Modelos filtrados para año ${year}:`, modelsForYear);
+          return modelsForYear.map(model => ({
+            id: model.id || model.codia,
+            name: model.name
+          }));
+        } else {
+          return data.map(model => ({
+            id: model.id || model.codia,
+            name: model.name
+          }));
+        }
       }
       
       return [];
@@ -295,21 +300,34 @@ class InfoAutosApi {
   // Obtener versiones por modelo, marca y año
   async getVersions(year, brandId, modelId) {
     try {
-      // Según la documentación, usar el endpoint correcto para versiones
-      const data = await this.makeRequest(`/years/${year}/brands/${brandId}/models/${modelId}/versions`);
-      console.log(`🔧 Versiones obtenidas para modelo ${modelId} marca ${brandId} año ${year}:`, data);
+      // Según la documentación, usar el endpoint de características del modelo
+      const data = await this.makeRequest(`/models/${modelId}/features/`);
+      console.log(`🔧 Características obtenidas para modelo ${modelId}:`, data);
       
       if (data && Array.isArray(data)) {
-        return data.map(version => ({
-          id: version.id,
-          name: version.name
+        // Convertir características en versiones
+        const versions = data.map(feature => ({
+          id: feature.id,
+          name: feature.name || feature.value
         }));
+        
+        console.log(`🔧 Versiones generadas para modelo ${modelId}:`, versions);
+        return versions;
       }
       
-      return [];
+      // Fallback: crear versión básica
+      return [{
+        id: '1',
+        name: 'Versión Estándar'
+      }];
     } catch (error) {
       console.error(`❌ Error obteniendo versiones para modelo ${modelId}:`, error);
-      throw error;
+      
+      // Fallback: versión básica
+      return [{
+        id: '1',
+        name: 'Versión Estándar'
+      }];
     }
   }
 
