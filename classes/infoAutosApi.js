@@ -3,9 +3,12 @@ const axios = require('axios');
 class InfoAutosApi {
   constructor() {
     this.baseURL = 'https://api.infoauto.com.ar/cars/pub';
+    this.authURL = 'https://api.infoauto.com.ar/cars/auth';
     this.accessToken = null;
     this.refreshToken = null;
     this.tokenExpiry = null;
+    this.isRefreshing = false;
+    this.refreshPromise = null;
   }
 
   setTokens(accessToken, refreshToken) {
@@ -16,11 +19,44 @@ class InfoAutosApi {
   }
 
   isTokenExpired() {
-    return !this.tokenExpiry || Date.now() >= this.tokenExpiry;
+    // Agregar margen de seguridad de 5 minutos para evitar llamadas con tokens casi expirados
+    const safetyMargin = 5 * 60 * 1000; // 5 minutos
+    return !this.tokenExpiry || Date.now() >= (this.tokenExpiry - safetyMargin);
+  }
+
+  // Renovar token automáticamente si es necesario
+  async ensureValidToken() {
+    // Si el token está expirado o por expirar, renovarlo
+    if (this.isTokenExpired()) {
+      console.log('🔄 Token expirado o por expirar, renovando...');
+      
+      // Si ya estamos refrescando, esperar a que termine
+      if (this.isRefreshing) {
+        console.log('⏳ Ya se está renovando el token, esperando...');
+        return this.refreshPromise;
+      }
+
+      // Iniciar renovación
+      this.isRefreshing = true;
+      this.refreshPromise = this.refreshAccessToken();
+      
+      try {
+        await this.refreshPromise;
+        console.log('✅ Token renovado exitosamente');
+      } finally {
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+      }
+    } else {
+      console.log('✅ Usando token existente válido');
+    }
   }
 
   async makeRequest(endpoint, params = {}) {
     try {
+      // Asegurar que tenemos un token válido antes de hacer la llamada
+      await this.ensureValidToken();
+      
       const url = `${this.baseURL}${endpoint}`;
       const config = {
         headers: {
@@ -40,6 +76,34 @@ class InfoAutosApi {
       console.log(`✅ Respuesta exitosa de Info Autos: ${response.status}`);
       return response.data;
     } catch (error) {
+      // Si es error 401, intentar renovar el token y reintentar
+      if (error.response?.status === 401) {
+        console.log('🔄 Error 401, intentando renovar token y reintentar...');
+        
+        try {
+          await this.refreshAccessToken();
+          // Reintentar la llamada con el nuevo token
+          const retryConfig = {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${this.accessToken}`
+            },
+            params: {
+              ...params,
+              page: 1,
+              page_size: 100
+            }
+          };
+          
+          const retryResponse = await axios.get(`${this.baseURL}${endpoint}`, retryConfig);
+          console.log(`✅ Reintento exitoso: ${retryResponse.status}`);
+          return retryResponse.data;
+        } catch (refreshError) {
+          console.error('❌ Error renovando token:', refreshError);
+          throw error; // Lanzar el error original si falla la renovación
+        }
+      }
+      
       console.error(`❌ Error en llamada a Info Autos:`, error.response?.status, error.response?.statusText);
       throw error;
     }
@@ -267,8 +331,12 @@ class InfoAutosApi {
     try {
       console.log('🔄 Refrescando token de acceso...');
       
-      const response = await axios.post('https://api.infoauto.com.ar/auth/refresh', {
+      const response = await axios.post(`${this.authURL}/refresh`, {
         refresh_token: this.refreshToken
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (response.data.access_token) {
@@ -277,10 +345,16 @@ class InfoAutosApi {
         console.log('✅ Token refrescado correctamente');
         return true;
       } else {
-        throw new Error('No se recibió nuevo access_token');
+        throw new Error('No se recibió nuevo access_token en la respuesta');
       }
     } catch (error) {
-      console.error('❌ Error refrescando token:', error);
+      console.error('❌ Error refrescando token:', error.response?.data || error.message);
+      
+      // Si el refresh token también expiró, necesitamos nuevos tokens
+      if (error.response?.status === 401) {
+        throw new Error('Refresh token expirado. Se necesitan nuevos tokens de Info Autos.');
+      }
+      
       throw error;
     }
   }

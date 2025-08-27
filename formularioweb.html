@@ -430,7 +430,7 @@ function populateSelect(selectElement, data, placeholder, disabled = false) {
   $(selectElement).select2({ 
     width: '100%', 
     placeholder: placeholder,
-    allowClear: true
+    allowClear: false
   });
 }
 
@@ -453,7 +453,7 @@ function showLoading(selectElement, message) {
   $(selectElement).select2({ 
     width: '100%', 
     placeholder: message,
-    allowClear: true
+    allowClear: false
   });
 }
 
@@ -476,7 +476,7 @@ function showError(selectElement, message) {
   $(selectElement).select2({ 
     width: '100%', 
     placeholder: message,
-    allowClear: true
+    allowClear: false
   });
 }
 
@@ -499,7 +499,7 @@ function resetSelect(selectElement, placeholder, disabled = true) {
   $(selectElement).select2({ 
     width: '100%', 
     placeholder: placeholder,
-    allowClear: true
+    allowClear: false
   });
 }
 
