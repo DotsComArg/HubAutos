@@ -215,6 +215,39 @@ class InfoAutosApi {
     }
   }
 
+  // Obtener TODAS las marcas disponibles (sin filtrar por año)
+  async getAllBrands() {
+    try {
+      console.log(`🏷️ Obteniendo TODAS las marcas disponibles...`);
+      
+      const brands = await this.makeRequest('/brands/', {
+        query_mode: 'matching',
+        list_price: true,
+        prices: true
+      });
+
+      if (!brands || !Array.isArray(brands)) {
+        console.log('⚠️ Respuesta de brands no válida');
+        return [];
+      }
+
+      console.log(`📊 Total de marcas obtenidas: ${brands.length}`);
+
+      // Convertir a formato esperado por el frontend (sin filtrar por año)
+      const result = brands.map(brand => ({
+        id: brand.id.toString(),
+        name: brand.name
+      }));
+
+      console.log(`✅ Marcas únicas disponibles:`, result.length);
+      return result;
+
+    } catch (error) {
+      console.error(`❌ Error obteniendo todas las marcas:`, error);
+      throw error;
+    }
+  }
+
   // Obtener modelos por marca y año - Usar /brands/{brand_id}/models/
   async getModels(year, brandId) {
     try {

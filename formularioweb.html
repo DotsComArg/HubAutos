@@ -521,18 +521,18 @@ async function loadYears() {
 }
 
 // Cargar marcas cuando se selecciona un año
-async function loadBrands(year) {
+async function loadBrands() {
   try {
     // Resetear selects dependientes
     resetSelect(document.getElementById('brand'), 'Seleccioná marca');
     resetSelect(document.getElementById('model'), 'Primero seleccioná una marca');
     resetSelect(document.getElementById('version'), 'Primero seleccioná un modelo');
 
-    // Cargar marcas
+    // Cargar marcas - Usar la nueva ruta /brands (sin año)
     showLoading(document.getElementById('brand'), 'Cargando marcas...');
-    const brands = await fetchWithCache(`/brands/${year}`);
+    const brands = await fetchWithCache('/brands');
     populateSelect(document.getElementById('brand'), brands, 'Seleccioná marca');
-    console.log(`✅ Marcas cargadas desde Info Autos para año ${year}:`, brands.length);
+    console.log(`✅ Marcas cargadas desde Info Autos:`, brands.length);
   } catch (error) {
     showError(document.getElementById('brand'), 'Error cargando marcas desde Info Autos');
     console.error('Error cargando marcas:', error);
@@ -590,7 +590,7 @@ $(document).ready(function() {
     const year = this.value;
     console.log(`📅 Año seleccionado: ${year}`);
     if (year) {
-      await loadBrands(year);
+      await loadBrands();
     }
   });
 

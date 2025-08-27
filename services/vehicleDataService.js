@@ -50,6 +50,25 @@ class VehicleDataService {
     }
   }
 
+  // Obtener TODAS las marcas disponibles (sin filtrar por año)
+  async getAllBrands() {
+    try {
+      console.log(`🏷️ Obteniendo TODAS las marcas disponibles desde Info Autos...`);
+      const brands = await this.infoAutosApi.getAllBrands();
+      console.log(`✅ Total de marcas obtenidas: ${brands.length}`);
+      
+      if (brands && brands.length > 0) {
+        return brands;
+      } else {
+        console.log('⚠️ Info Autos devolvió marcas vacías');
+        return [];
+      }
+    } catch (error) {
+      console.error(`❌ Error obteniendo todas las marcas:`, error);
+      return [];
+    }
+  }
+
   // Obtener modelos por marca y año
   async getModels(year, brandId) {
     try {
