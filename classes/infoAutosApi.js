@@ -183,6 +183,12 @@ class InfoAutosApi {
         return [];
       }
 
+      // Obtener el nombre del grupo para extraerlo de las descripciones
+      const groupModel = models.find(model => 
+        model.group?.id?.toString() === modelId
+      );
+      const groupName = groupModel?.group?.name || '';
+
       // Filtrar modelos que pertenezcan al grupo seleccionado y tengan precios para el año
       const versions = models.filter(model => 
         model.group?.id?.toString() === modelId &&
@@ -194,10 +200,23 @@ class InfoAutosApi {
       );
 
       // Convertir a formato esperado por el frontend
-      const formattedVersions = versions.map(model => ({
-        id: model.codia.toString(),
-        name: model.description || 'Versión sin nombre'
-      }));
+      const formattedVersions = versions.map(model => {
+        let versionName = model.description || 'Versión sin nombre';
+        
+        // Remover el nombre del modelo del inicio de la descripción
+        if (groupName && versionName.startsWith(groupName)) {
+          versionName = versionName.substring(groupName.length).trim();
+          // Si queda vacío o solo espacios, usar la descripción completa
+          if (!versionName) {
+            versionName = model.description || 'Versión sin nombre';
+          }
+        }
+
+        return {
+          id: model.codia.toString(),
+          name: versionName
+        };
+      });
 
       console.log(`🔧 Versiones encontradas para grupo ${modelId}:`, formattedVersions.length);
       return formattedVersions;
