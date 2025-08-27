@@ -140,10 +140,26 @@ class InfoAutosApi {
         year <= model.prices_to
       );
 
+      // Agrupar modelos por grupo base para evitar duplicados
+      const groupedModels = new Map();
+      
+      filteredModels.forEach(model => {
+        const groupKey = model.group?.name || 'Sin grupo';
+        const groupId = model.group?.id || '0';
+        
+        if (!groupedModels.has(groupKey)) {
+          groupedModels.set(groupKey, {
+            id: groupId,
+            name: groupKey,
+            fullDescription: model.description || 'Modelo sin nombre'
+          });
+        }
+      });
+
       // Convertir a formato esperado por el frontend
-      return filteredModels.map(model => ({
-        id: model.codia.toString(),
-        name: model.description || model.group?.name || 'Modelo sin nombre'
+      return Array.from(groupedModels.values()).map(model => ({
+        id: model.id.toString(),
+        name: model.name
       }));
 
     } catch (error) {
@@ -152,61 +168,45 @@ class InfoAutosApi {
     }
   }
 
-  // Obtener versiones por modelo - Usar /models/{codia}/features/
+  // Obtener versiones por modelo - Usar /brands/{brand_id}/models/ y filtrar por grupo
   async getVersions(year, brandId, modelId) {
     try {
-      console.log(`🔧 Obteniendo características para modelo ${modelId}...`);
+      console.log(`🔧 Obteniendo versiones para grupo de modelo ${modelId}...`);
       
-      const features = await this.makeRequest(`/models/${modelId}/features/`);
+      // Obtener todos los modelos de la marca para encontrar las versiones del grupo
+      const models = await this.makeRequest(`/brands/${brandId}/models/`, {
+        query_mode: 'matching'
+      });
 
-      if (!features || !Array.isArray(features)) {
-        console.log('⚠️ Respuesta de features no válida');
+      if (!models || !Array.isArray(models)) {
+        console.log('⚠️ Respuesta de models no válida');
         return [];
       }
 
-      // Filtrar solo características relevantes para el formulario
-      // Priorizar características importantes como motor, transmisión, etc.
-      const relevantFeatures = features.filter(feature => {
-        // Incluir características importantes
-        const importantCategories = ['Motor y transmisión', 'Datos técnicos'];
-        const importantFeatures = ['Combustible', 'Alimentación', 'Tracción', 'Caja', 'Cilindrada', 'Potencia HP'];
-        
-        return importantCategories.includes(feature.category_name) || 
-               importantFeatures.includes(feature.description);
-      });
+      // Filtrar modelos que pertenezcan al grupo seleccionado y tengan precios para el año
+      const versions = models.filter(model => 
+        model.group?.id?.toString() === modelId &&
+        model.prices && 
+        model.prices_from && 
+        model.prices_to && 
+        year >= model.prices_from && 
+        year <= model.prices_to
+      );
 
-      // Si no hay características relevantes, usar las primeras 5 características
-      const featuresToUse = relevantFeatures.length > 0 ? relevantFeatures : features.slice(0, 5);
+      // Convertir a formato esperado por el frontend
+      const formattedVersions = versions.map(model => ({
+        id: model.codia.toString(),
+        name: model.description || 'Versión sin nombre'
+      }));
 
-      // Convertir características a versiones
-      const versions = featuresToUse.map(feature => {
-        let versionName = feature.description;
-        
-        // Agregar valor si es relevante
-        if (feature.value_description && feature.value_description !== 'string') {
-          versionName += `: ${feature.value_description}`;
-        } else if (feature.value && feature.value !== 'string' && feature.value !== 0) {
-          if (typeof feature.value === 'boolean') {
-            versionName += `: ${feature.value ? 'Sí' : 'No'}`;
-          } else {
-            versionName += `: ${feature.value}`;
-          }
-        }
-
-        return {
-          id: feature.id.toString(),
-          name: versionName
-        };
-      });
-
-      console.log(`🔧 Versiones generadas para modelo ${modelId}:`, versions.length);
-      return versions;
+      console.log(`🔧 Versiones encontradas para grupo ${modelId}:`, formattedVersions.length);
+      return formattedVersions;
 
     } catch (error) {
-      console.error(`❌ Error obteniendo versiones para modelo ${modelId}:`, error);
+      console.error(`❌ Error obteniendo versiones para grupo ${modelId}:`, error);
       
       // Fallback: crear versiones básicas
-      console.log(`🔧 Usando versiones de fallback para modelo ${modelId}`);
+      console.log(`🔧 Usando versiones de fallback para grupo ${modelId}`);
       return [
         { id: "1", name: "Versión Estándar" },
         { id: "2", name: "Versión Premium" },
