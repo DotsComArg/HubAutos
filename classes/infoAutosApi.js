@@ -70,7 +70,7 @@ class InfoAutosApi {
     }
   }
 
-  async makeRequest(endpoint, params = {}) {
+  async makeRequest(endpoint, params = {}, getHeaders = false) {
     try {
       // Asegurar que tenemos un token válido antes de hacer la llamada
       await this.ensureValidToken();
@@ -82,9 +82,7 @@ class InfoAutosApi {
           'Authorization': `Bearer ${this.accessToken}`
         },
         params: {
-          ...params,
-          page: 1,
-          page_size: 100 // Obtener más resultados por página
+          ...params
         }
       };
 
@@ -92,6 +90,15 @@ class InfoAutosApi {
       const response = await axios.get(url, config);
       
       console.log(`✅ Respuesta exitosa de Info Autos: ${response.status}`);
+      
+      // Si se solicitan headers, devolver tanto datos como headers
+      if (getHeaders) {
+        return {
+          data: response.data,
+          headers: response.headers
+        };
+      }
+      
       return response.data;
     } catch (error) {
       // Si es error 401, intentar renovar el token y reintentar
@@ -107,14 +114,21 @@ class InfoAutosApi {
               'Authorization': `Bearer ${this.accessToken}`
             },
             params: {
-              ...params,
-              page: 1,
-              page_size: 100
+              ...params
             }
           };
           
           const retryResponse = await axios.get(`${this.baseURL}${endpoint}`, retryConfig);
           console.log(`✅ Reintento exitoso: ${retryResponse.status}`);
+          
+          // Si se solicitan headers, devolver tanto datos como headers
+          if (getHeaders) {
+            return {
+              data: retryResponse.data,
+              headers: retryResponse.headers
+            };
+          }
+          
           return retryResponse.data;
         } catch (refreshError) {
           console.error('❌ Error renovando token:', refreshError);
@@ -263,22 +277,68 @@ class InfoAutosApi {
     try {
       console.log(`🚗 Obteniendo TODOS los modelos para marca ${brandId} (sin filtrar por año)...`);
       
-      // Obtener TODOS los modelos de la marca (sin filtrar por año en la URL)
-      const models = await this.makeRequest(`/brands/${brandId}/models/`, {
-        query_mode: 'matching'
-      });
+      let allModels = [];
+      let currentPage = 1;
+      let totalPages = 1;
+      let hasMorePages = true;
+      
+      // Obtener modelos página por página hasta completar todas
+      while (hasMorePages) {
+        console.log(`📄 Obteniendo página ${currentPage} de modelos para marca ${brandId}...`);
+        
+        const models = await this.makeRequest(`/brands/${brandId}/models/`, {
+          query_mode: 'matching',
+          page: currentPage,
+          page_size: 20 // Usar el máximo de la API
+        });
 
-      if (!models || !Array.isArray(models)) {
-        console.log('⚠️ Respuesta de models no válida');
-        return [];
+        if (!models || !Array.isArray(models)) {
+          console.log(`⚠️ Respuesta de models no válida en página ${currentPage}`);
+          break;
+        }
+
+        // Agregar modelos de esta página al total
+        allModels = allModels.concat(models);
+        console.log(`📊 Modelos obtenidos en página ${currentPage}: ${models.length}`);
+
+        // Verificar si hay más páginas
+        if (currentPage === 1) {
+          // En la primera página, obtener información de paginación del header
+          const response = await this.makeRequest(`/brands/${brandId}/models/`, {
+            query_mode: 'matching',
+            page: 1,
+            page_size: 20
+          }, true); // Flag para obtener headers
+          
+          if (response && response.headers && response.headers['x-pagination']) {
+            try {
+              const paginationInfo = JSON.parse(response.headers['x-pagination']);
+              totalPages = paginationInfo.total_pages;
+              console.log(`📚 Total de páginas disponibles: ${totalPages}`);
+            } catch (parseError) {
+              console.log('⚠️ Error parseando información de paginación, asumiendo una sola página');
+              totalPages = 1;
+            }
+          }
+        }
+
+        // Verificar si llegamos a la última página
+        if (currentPage >= totalPages) {
+          hasMorePages = false;
+          console.log(`✅ Llegamos a la última página (${totalPages})`);
+        } else {
+          currentPage++;
+          // Pequeña pausa para evitar rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
 
-      console.log(`📊 Total de modelos obtenidos para marca ${brandId}:`, models.length);
+      console.log(`📊 Total de modelos obtenidos para marca ${brandId}: ${allModels.length}`);
 
       // Agrupar modelos por grupo base para evitar duplicados (sin filtrar por año)
       const groupedModels = new Map();
       
-      models.forEach(model => {
+      allModels.forEach(model => {
         const groupKey = model.group?.name || 'Sin grupo';
         const groupId = model.group?.id || '0';
         
