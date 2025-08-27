@@ -546,9 +546,9 @@ async function loadModels(year, brandId) {
     resetSelect(document.getElementById('model'), 'Seleccioná modelo');
     resetSelect(document.getElementById('version'), 'Primero seleccioná un modelo');
 
-    // Cargar modelos - NO enviar año en la URL, el backend filtrará por año
+    // Cargar modelos - Usar la nueva ruta /brands/{brandId}/models
     showLoading(document.getElementById('model'), 'Cargando modelos...');
-    const models = await fetchWithCache(`/models/${brandId}?year=${year}`);
+    const models = await fetchWithCache(`/brands/${brandId}/models?year=${year}`);
     populateSelect(document.getElementById('model'), models, 'Seleccioná modelo');
     console.log(`✅ Modelos cargados desde Info Autos para marca ${brandId}:`, models.length);
   } catch (error) {
@@ -563,9 +563,9 @@ async function loadVersions(year, brandId, modelId) {
     // Resetear select de versiones
     resetSelect(document.getElementById('version'), 'Seleccioná versión');
 
-    // Cargar versiones
+    // Cargar versiones - Usar la nueva ruta /brands/{brandId}/models/{modelId}/versions
     showLoading(document.getElementById('version'), 'Cargando versiones...');
-    const versions = await fetchWithCache(`/versions/${year}/${brandId}/${modelId}`);
+    const versions = await fetchWithCache(`/brands/${brandId}/models/${modelId}/versions?year=${year}`);
     populateSelect(document.getElementById('version'), versions, 'Seleccioná versión');
     console.log(`✅ Versiones cargadas desde Info Autos para modelo ${modelId}:`, versions.length);
   } catch (error) {

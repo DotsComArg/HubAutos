@@ -98,15 +98,17 @@ router.get('/brands/:year', async (req, res) => {
 });
 
 // Obtener modelos por marca y año
-router.get('/models/:year/:brandId', async (req, res) => {
+router.get('/brands/:brandId/models', async (req, res) => {
   try {
-    const { year, brandId } = req.params;
+    const { brandId } = req.params;
+    const { year } = req.query; // El año viene como query parameter
+    
     console.log(`🚗 Solicitando modelos para marca ${brandId} año ${year}...`);
     
     if (!year || isNaN(year)) {
       return res.status(400).json({
         success: false,
-        error: 'Año inválido'
+        error: 'Año requerido como query parameter (ej: ?year=2024)'
       });
     }
     
@@ -130,7 +132,7 @@ router.get('/models/:year/:brandId', async (req, res) => {
       brandId: brandId
     });
   } catch (error) {
-    console.error(`❌ Error obteniendo modelos para marca ${req.params.brandId} año ${req.params.year}:`, error);
+    console.error(`❌ Error obteniendo modelos para marca ${req.params.brandId} año ${req.query.year}:`, error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -139,15 +141,17 @@ router.get('/models/:year/:brandId', async (req, res) => {
 });
 
 // Obtener versiones por modelo, marca y año
-router.get('/versions/:year/:brandId/:modelId', async (req, res) => {
+router.get('/brands/:brandId/models/:modelId/versions', async (req, res) => {
   try {
-    const { year, brandId, modelId } = req.params;
+    const { brandId, modelId } = req.params;
+    const { year } = req.query; // El año viene como query parameter
+    
     console.log(`🔧 Solicitando versiones para modelo ${modelId} marca ${brandId} año ${year}...`);
     
     if (!year || isNaN(year)) {
       return res.status(400).json({
         success: false,
-        error: 'Año inválido'
+        error: 'Año requerido como query parameter (ej: ?year=2024)'
       });
     }
     
