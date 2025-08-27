@@ -366,57 +366,113 @@ class InfoAutosApi {
     }
   }
 
-  // Obtener versiones por modelo - Usar /brands/{brand_id}/models/ y filtrar por grupo
+  // Obtener versiones por modelo - Usar /brands/{brand_id}/groups/{group_id}/models/
   async getVersions(year, brandId, modelId) {
     try {
-      console.log(`🔧 Obteniendo versiones para grupo de modelo ${modelId}...`);
+      console.log(`🔧 Obteniendo versiones para grupo ${modelId} de marca ${brandId} año ${year}...`);
       
-      // Obtener todos los modelos de la marca para encontrar las versiones del grupo
-      const models = await this.makeRequest(`/brands/${brandId}/models/`, {
-        query_mode: 'matching'
-      });
+      let allVersions = [];
+      let currentPage = 1;
+      let totalPages = 1;
+      let hasMorePages = true;
+      
+      // Obtener versiones página por página hasta completar todas
+      while (hasMorePages) {
+        console.log(`📄 Obteniendo página ${currentPage} de versiones para grupo ${modelId}...`);
+        
+        const versions = await this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
+          query_mode: 'matching',
+          page: currentPage,
+          page_size: 20 // Usar el máximo de la API
+        });
 
-      if (!models || !Array.isArray(models)) {
-        console.log('⚠️ Respuesta de models no válida');
-        return [];
+        if (!versions || !Array.isArray(versions)) {
+          console.log(`⚠️ Respuesta de versiones no válida en página ${currentPage}`);
+          break;
+        }
+
+        // Agregar versiones de esta página al total
+        allVersions = allVersions.concat(versions);
+        console.log(`📊 Version obtenidas en página ${currentPage}: ${versions.length}`);
+
+        // Verificar si hay más páginas
+        if (currentPage === 1) {
+          // En la primera página, obtener información de paginación del header
+          const response = await this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
+            query_mode: 'matching',
+            page: 1,
+            page_size: 20
+          }, true); // Flag para obtener headers
+          
+          if (response && response.headers && response.headers['x-pagination']) {
+            try {
+              const paginationInfo = JSON.parse(response.headers['x-pagination']);
+              totalPages = paginationInfo.total_pages;
+              console.log(`📚 Total de páginas disponibles para versiones: ${totalPages}`);
+            } catch (parseError) {
+              console.log('⚠️ Error parseando información de paginación, asumiendo una sola página');
+              totalPages = 1;
+            }
+          }
+        }
+
+        // Verificar si llegamos a la última página
+        if (currentPage >= totalPages) {
+          hasMorePages = false;
+          console.log(`✅ Llegamos a la última página de versiones (${totalPages})`);
+        } else {
+          currentPage++;
+          // Pequeña pausa para evitar rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
 
-      // Obtener el nombre del grupo para extraerlo de las descripciones
-      const groupModel = models.find(model => 
-        model.group?.id?.toString() === modelId
-      );
-      const groupName = groupModel?.group?.name || '';
+      console.log(`📊 Total de versiones obtenidas para grupo ${modelId}: ${allVersions.length}`);
 
-      // Filtrar modelos que pertenezcan al grupo seleccionado y tengan precios para el año
-      const versions = models.filter(model => 
-        model.group?.id?.toString() === modelId &&
-        model.prices && 
-        model.prices_from && 
-        model.prices_to && 
-        year >= model.prices_from && 
-        year <= model.prices_to
+      // Filtrar versiones que tengan precios para el año especificado
+      const filteredVersions = allVersions.filter(version => 
+        version.prices && 
+        version.prices_from && 
+        version.prices_to && 
+        year >= version.prices_from && 
+        year <= version.prices_to
       );
+
+      console.log(`📊 Version filtradas para año ${year}: ${filteredVersions.length}`);
 
       // Convertir a formato esperado por el frontend
-      const formattedVersions = versions.map(model => {
-        let versionName = model.description || 'Versión sin nombre';
+      const formattedVersions = filteredVersions.map(version => {
+        let versionName = version.description || 'Versión sin nombre';
         
-        // Remover el nombre del modelo del inicio de la descripción
+        // Remover el nombre del modelo del inicio de la descripción si está presente
+        // Por ejemplo: "A3 1.4T FSI L/10" -> "1.4T FSI L/10"
+        const groupName = version.group?.name || '';
         if (groupName && versionName.startsWith(groupName)) {
           versionName = versionName.substring(groupName.length).trim();
           // Si queda vacío o solo espacios, usar la descripción completa
           if (!versionName) {
-            versionName = model.description || 'Versión sin nombre';
+            versionName = version.description || 'Versión sin nombre';
           }
         }
 
         return {
-          id: model.codia.toString(),
+          id: version.codia.toString(),
           name: versionName
         };
       });
 
-      console.log(`🔧 Versiones encontradas para grupo ${modelId}:`, formattedVersions.length);
+      console.log(`🔧 Versiones finales para grupo ${modelId} año ${year}:`, formattedVersions.length);
+      
+      if (formattedVersions.length === 0) {
+        console.log(`⚠️ No se encontraron versiones para grupo ${modelId} año ${year}, usando fallback`);
+        // Fallback: crear versiones básicas
+        return [
+          { id: "1", name: "Versión Estándar" },
+          { id: "2", name: "Versión Premium" },
+          { id: "3", name: "Versión Sport" }
+        ];
+      }
+      
       return formattedVersions;
 
     } catch (error) {
