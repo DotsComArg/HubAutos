@@ -126,6 +126,39 @@ class VehicleDataService {
     }
   }
 
+  // Obtener versiones por modelo, marca y año específico
+  async getVersionsByYear(brandId, modelId, year) {
+    try {
+      console.log(`🔧 Obteniendo versiones para modelo ${modelId} marca ${brandId} año ${year} desde Info Autos...`);
+      
+      // Obtener todas las versiones del modelo
+      const allVersions = await this.infoAutosApi.getVersions(brandId, modelId);
+      
+      if (!allVersions || allVersions.length === 0) {
+        console.log('⚠️ No se encontraron versiones para el modelo');
+        return [];
+      }
+      
+      // Filtrar versiones que tengan precios para el año específico
+      const filteredVersions = allVersions.filter(version => {
+        // Si la versión tiene información de precios por año, filtrar
+        if (version.prices && version.prices_from && version.prices_to) {
+          return year >= version.prices_from && year <= version.prices_to;
+        }
+        
+        // Si no tiene información de precios por año, incluirla (fallback)
+        return true;
+      });
+      
+      console.log(`✅ Versiones filtradas para año ${year}: ${filteredVersions.length} de ${allVersions.length}`);
+      
+      return filteredVersions;
+    } catch (error) {
+      console.error(`❌ Error obteniendo versiones para modelo ${modelId} año ${year}:`, error);
+      return [];
+    }
+  }
+
   // Verificar estado de la conexión
   async checkConnection() {
     try {
