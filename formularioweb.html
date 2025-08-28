@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -11,6 +12,18 @@
 <body>
 
 <style>
+  /* Reset básico para evitar problemas de scroll horizontal */
+  * {
+    box-sizing: border-box;
+  }
+  
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: hidden;
+  }
+  
   /* Todos tus estilos actuales */
   .wp-form-section {
     display: none;
@@ -249,9 +262,276 @@
     color: #666;
     font-style: italic;
   }
+
+  /* Spinner de carga para selects */
+  .wp-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #1462af;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Estado de carga para selects */
+  .wp-select-loading {
+    position: relative;
+  }
+
+  .wp-select-loading::after {
+    content: '';
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border: 3px solid #e3eaf2;
+    border-top: 3px solid #1462af;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 10;
+  }
+
+  /* Hacer el spinner más visible */
+  .wp-select-loading .select2-selection {
+    background: #f0f7ff !important;
+    border-color: #1462af !important;
+  }
+
+  /* Mensaje de carga con spinner */
+  .wp-loading-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #1462af;
+    font-size: 1em;
+    font-weight: 500;
+    padding: 8px 12px;
+    background: #f0f7ff;
+    border-radius: 6px;
+    border: 1px solid #d1e7ff;
+  }
+
+  /* Mensaje de loading debajo del botón */
+  .wp-loading-status {
+    text-align: center;
+    margin-top: 15px;
+    padding: 12px 20px;
+    background: #f0f7ff;
+    border: 1px solid #d1e7ff;
+    border-radius: 8px;
+    color: #1462af;
+    font-size: 1.1em;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .wp-loading-status::before {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e3eaf2;
+    border-top: 2px solid #1462af;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  /* Responsive para móviles */
+  @media (max-width: 768px) {
+    /* Ajustar el body para evitar scroll horizontal */
+    body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      width: 100%;
+    }
+    
+    .wp-form-tabs {
+      flex-direction: column;
+      gap: 0;
+      border-bottom: none;
+      background: none;
+      border-radius: 0;
+    }
+
+    .wp-form-tab {
+      width: 100%;
+      padding: 15px 20px;
+      border-bottom: 2px solid #e8e8e8;
+      border-radius: 0;
+      background: #f8fafc;
+      margin-bottom: 0;
+      font-size: 1.1em;
+      text-align: left;
+      display: none; /* Ocultar todas las pestañas por defecto */
+    }
+
+    .wp-form-tab.active {
+      display: block; /* Solo mostrar la pestaña activa */
+      background: #1462af;
+      color: white;
+      border-bottom-color: #1462af;
+      font-weight: 600;
+    }
+
+    /* Hacer que el formulario ocupe todo el ancho en móviles */
+    form#form-cotiza-auto {
+      padding: 20px 15px;
+      margin: 10px;
+      border-radius: 10px;
+      width: calc(100% - 20px) !important;
+      max-width: calc(100% - 20px) !important;
+      box-sizing: border-box;
+    }
+
+    /* Ajustar botones en móviles */
+    .wp-btn-row {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .wp-btn {
+      width: 100%;
+      padding: 15px 20px;
+      font-size: 1.2em;
+    }
+
+    /* Ajustar campos en móviles */
+    .wp-input,
+    .wp-select {
+      height: 55px;
+      font-size: 1em;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+
+    /* Ajustar labels en móviles */
+    .wp-label {
+      font-size: 1em;
+      margin: 20px 0 10px 0;
+    }
+    
+    /* Asegurar que Select2 no se desborde */
+    .select2-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box;
+    }
+  }
+
+  /* Responsive para tablets */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .wp-form-tab {
+      font-size: 1.1em;
+      padding: 12px 0;
+    }
+
+    form#form-cotiza-auto {
+      padding: 28px 20px;
+      max-width: 90% !important;
+      margin: 0 auto;
+    }
+  }
+  
+  /* Responsive para pantallas pequeñas */
+  @media (max-width: 480px) {
+    form#form-cotiza-auto {
+      padding: 15px 12px;
+      margin: 5px;
+      width: calc(100% - 10px) !important;
+      max-width: calc(100% - 10px) !important;
+    }
+    
+    .wp-form-tab {
+      padding: 12px 15px;
+      font-size: 1em;
+    }
+    
+    .wp-input,
+    .wp-select {
+      height: 50px;
+      font-size: 0.95em;
+      padding: 12px 10px;
+    }
+    
+    .wp-label {
+      font-size: 0.95em;
+      margin: 18px 0 8px 0;
+    }
+  }
+
+  /* Indicador de progreso para móviles */
+  .wp-progress-indicator {
+    display: none;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 0.9em;
+    color: #666;
+    background: #f8fafc;
+    padding: 12px 20px;
+    border-radius: 8px;
+    border: 1px solid #e3eaf2;
+  }
+
+  .wp-progress-dots {
+    display: none;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .wp-progress-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ddd;
+    transition: background 0.3s ease;
+  }
+
+  .wp-progress-dot.active {
+    background: #1462af;
+  }
+
+  @media (max-width: 768px) {
+    .wp-progress-indicator {
+      display: block;
+    }
+
+    .wp-progress-dots {
+      display: flex;
+    }
+
+    .wp-progress-indicator::before {
+      content: "📋 ";
+      font-size: 1.2em;
+      margin-right: 8px;
+    }
+  }
 </style>
 
 <form id="form-cotiza-auto" autocomplete="off">
+  <div class="wp-progress-indicator" id="progress-indicator">
+    <span>Paso 1 de 3</span>
+    <div class="wp-progress-dots">
+      <div class="wp-progress-dot active" data-step="1"></div>
+      <div class="wp-progress-dot" data-step="2"></div>
+      <div class="wp-progress-dot" data-step="3"></div>
+    </div>
+  </div>
+  
   <div class="wp-form-tabs">
     <div class="wp-form-tab active" data-step="1">Detalles del Vehículo</div>
     <div class="wp-form-tab" data-step="2">Estado y Ubicación del Vehículo</div>
@@ -283,6 +563,7 @@
     <div class="wp-btn-row">
       <button type="button" class="wp-btn" id="wp-next-1">Siguiente</button>
     </div>
+    <div class="wp-loading-status" id="loading-status" style="display: none;"></div>
     <div class="wp-error"></div>
   </div>
 
@@ -408,6 +689,9 @@ function populateSelect(selectElement, data, placeholder, disabled = false) {
     $(selectElement).select2('destroy');
   }
   
+  // Remover clase de loading
+  selectElement.classList.remove('wp-select-loading');
+  
   selectElement.innerHTML = '';
   
   // Agregar placeholder
@@ -447,14 +731,22 @@ function showLoading(selectElement, message) {
   option.textContent = message;
   option.disabled = true;
   selectElement.appendChild(option);
-  selectElement.disabled = true;
   
-  // Inicializar Select2
+  // NO deshabilitar el campo para que se vea el loading
+  selectElement.disabled = false;
+  
+  // Agregar clase de loading para el spinner
+  selectElement.classList.add('wp-select-loading');
+  
+  // Inicializar Select2 con placeholder de loading
   $(selectElement).select2({ 
     width: '100%', 
     placeholder: message,
     allowClear: false
   });
+  
+  // Forzar que se vea el placeholder de loading
+  $(selectElement).next('.select2-container').find('.select2-selection__placeholder').text(message);
 }
 
 // Función para mostrar error en un select
@@ -463,6 +755,9 @@ function showError(selectElement, message) {
   if ($(selectElement).hasClass('select2-hidden-accessible')) {
     $(selectElement).select2('destroy');
   }
+  
+  // Remover clase de loading
+  selectElement.classList.remove('wp-select-loading');
   
   selectElement.innerHTML = '';
   const option = document.createElement('option');
@@ -487,6 +782,9 @@ function resetSelect(selectElement, placeholder, disabled = true) {
     $(selectElement).select2('destroy');
   }
   
+  // Remover clase de loading
+  selectElement.classList.remove('wp-select-loading');
+  
   selectElement.innerHTML = '';
   const option = document.createElement('option');
   option.value = '';
@@ -501,6 +799,23 @@ function resetSelect(selectElement, placeholder, disabled = true) {
     placeholder: placeholder,
     allowClear: false
   });
+}
+
+// ===========================================
+// FUNCIONES DE INFO AUTOS
+// ===========================================
+
+// Función para mostrar mensaje de loading
+function showLoadingStatus(message) {
+  const loadingStatus = document.getElementById('loading-status');
+  loadingStatus.textContent = message;
+  loadingStatus.style.display = 'flex';
+}
+
+// Función para ocultar mensaje de loading
+function hideLoadingStatus() {
+  const loadingStatus = document.getElementById('loading-status');
+  loadingStatus.style.display = 'none';
 }
 
 // ===========================================
@@ -524,51 +839,81 @@ async function loadYears() {
 async function loadBrands() {
   try {
     // Resetear selects dependientes
-    resetSelect(document.getElementById('brand'), 'Seleccioná marca');
     resetSelect(document.getElementById('model'), 'Primero seleccioná una marca');
     resetSelect(document.getElementById('version'), 'Primero seleccioná un modelo');
 
-    // Cargar marcas - Usar la nueva ruta /brands (sin año)
-    showLoading(document.getElementById('brand'), 'Cargando marcas...');
+    // Mostrar mensaje de loading
+    showLoadingStatus('Cargando todas las marcas disponibles...');
+    
+    // Cargar TODAS las marcas disponibles (sin filtrar por año)
     const brands = await fetchWithCache('/brands');
     populateSelect(document.getElementById('brand'), brands, 'Seleccioná marca');
-    console.log(`✅ Marcas cargadas desde Info Autos:`, brands.length);
+    
+    // Ocultar mensaje de loading
+    hideLoadingStatus();
+    
+    console.log(`✅ Todas las marcas cargadas desde Info Autos:`, brands.length);
   } catch (error) {
+    hideLoadingStatus();
     showError(document.getElementById('brand'), 'Error cargando marcas desde Info Autos');
     console.error('Error cargando marcas:', error);
   }
 }
 
 // Cargar modelos cuando se selecciona una marca
-async function loadModels(brandId) {
+async function loadModels(brandId, year) {
   try {
+    if (!year) {
+      console.log('⚠️ No hay año seleccionado para cargar modelos');
+      return;
+    }
+
     // Resetear selects dependientes
     resetSelect(document.getElementById('model'), 'Seleccioná modelo');
     resetSelect(document.getElementById('version'), 'Primero seleccioná un modelo');
 
-    // Cargar modelos - Usar la nueva ruta /brands/{brandId}/models (sin año)
-    showLoading(document.getElementById('model'), 'Cargando modelos...');
-    const models = await fetchWithCache(`/brands/${brandId}/models`);
+    // Mostrar mensaje de loading
+    showLoadingStatus('Cargando modelos disponibles para el año seleccionado...');
+    
+    // Cargar modelos filtrados por año
+    const models = await fetchWithCache(`/brands/${brandId}/models?year=${year}`);
     populateSelect(document.getElementById('model'), models, 'Seleccioná modelo');
-    console.log(`✅ Modelos cargados desde Info Autos para marca ${brandId}:`, models.length);
+    
+    // Ocultar mensaje de loading
+    hideLoadingStatus();
+    
+    console.log(`✅ Modelos cargados desde Info Autos para marca ${brandId} año ${year}:`, models.length);
   } catch (error) {
+    hideLoadingStatus();
     showError(document.getElementById('model'), 'Error cargando modelos desde Info Autos');
     console.error('Error cargando modelos:', error);
   }
 }
 
 // Cargar versiones cuando se selecciona un modelo
-async function loadVersions(brandId, modelId) {
+async function loadVersions(brandId, modelId, year) {
   try {
+    if (!year) {
+      console.log('⚠️ No hay año seleccionado para cargar versiones');
+      return;
+    }
+
     // Resetear select de versiones
     resetSelect(document.getElementById('version'), 'Seleccioná versión');
 
-    // Cargar versiones - Usar la nueva ruta /brands/{brandId}/groups/{modelId}/models (sin año)
-    showLoading(document.getElementById('version'), 'Cargando versiones...');
-    const versions = await fetchWithCache(`/brands/${brandId}/groups/${modelId}/models`);
+    // Mostrar mensaje de loading
+    showLoadingStatus('Cargando versiones disponibles para el año seleccionado...');
+    
+    // Cargar versiones filtradas por año
+    const versions = await fetchWithCache(`/brands/${brandId}/groups/${modelId}/models?year=${year}`);
     populateSelect(document.getElementById('version'), versions, 'Seleccioná versión');
-    console.log(`✅ Versiones cargadas desde Info Autos para modelo ${modelId}:`, versions.length);
+    
+    // Ocultar mensaje de loading
+    hideLoadingStatus();
+    
+    console.log(`✅ Versiones cargadas desde Info Autos para modelo ${modelId} año ${year}:`, versions.length);
   } catch (error) {
+    hideLoadingStatus();
     showError(document.getElementById('version'), 'Error cargando versiones desde Info Autos');
     console.error('Error cargando versiones:', error);
   }
@@ -599,7 +944,7 @@ $(document).ready(function() {
     const year = $('#year').val();
     console.log(`🏷️ Marca seleccionada: ${brandId} para año ${year}`);
     if (brandId && year) {
-      await loadModels(brandId);
+      await loadModels(brandId, year);
     }
   });
 
@@ -609,7 +954,7 @@ $(document).ready(function() {
     const brandId = $('#brand').val();
     console.log(`🚗 Modelo seleccionado: ${modelId} para marca ${brandId} año ${year}`);
     if (modelId && year && brandId) {
-      await loadVersions(brandId, modelId);
+      await loadVersions(brandId, modelId, year);
     }
   });
 });
@@ -642,6 +987,19 @@ function goToStep(step) {
   form.querySelector(`.wp-form-section[data-step="${step}"]`).classList.add('active');
   form.querySelectorAll('.wp-form-tab').forEach(t=>t.classList.remove('active'));
   form.querySelector(`.wp-form-tab[data-step="${step}"]`).classList.add('active');
+  
+  // Actualizar indicador de progreso
+  const progressIndicator = document.getElementById('progress-indicator');
+  if (progressIndicator) {
+    progressIndicator.querySelector('span').textContent = `Paso ${step} de 3`;
+  }
+  
+  // Actualizar puntos de progreso
+  document.querySelectorAll('.wp-progress-dot').forEach(dot => {
+    dot.classList.remove('active');
+  });
+  document.querySelector(`.wp-progress-dot[data-step="${step}"]`).classList.add('active');
+  
   currentStep = step;
 }
 

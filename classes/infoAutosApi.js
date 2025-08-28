@@ -315,47 +315,43 @@ class InfoAutosApi {
 
       console.log(`📊 Total de modelos obtenidos para marca ${brandId}:`, models.length);
 
-      // PRIMERA ESTRATEGIA: Filtrar modelos que tengan precios para el año especificado
-      let filteredModels = models.filter(model => 
-        model.prices && 
-        model.prices_from && 
-        model.prices_to && 
-        year >= model.prices_from && 
-        year <= model.prices_to
-      );
-
-      console.log(`📊 Modelos filtrados estrictamente para año ${year}:`, filteredModels.length);
-
-      // SEGUNDA ESTRATEGIA: Si no hay modelos con filtrado estricto, usar filtrado más permisivo
-      if (filteredModels.length === 0) {
-        console.log(`⚠️ No se encontraron modelos con filtrado estricto para año ${year}, usando filtrado permisivo...`);
+      // FILTRADO PRINCIPAL: Solo modelos que realmente salieron en el año especificado
+      const filteredModels = models.filter(model => {
+        // Verificar si el modelo tiene información de años de producción
+        if (model.years && Array.isArray(model.years)) {
+          // Si tiene array de años, verificar que el año esté incluido
+          return model.years.includes(parseInt(year));
+        }
         
-        // Filtrar modelos que tengan información de años (más permisivo)
-        filteredModels = models.filter(model => {
-          // Si tiene información de años, verificar que sea compatible
-          if (model.years && Array.isArray(model.years)) {
-            return model.years.includes(parseInt(year));
-          }
-          
-          // Si tiene descripción que mencione el año, incluirlo
-          if (model.description && model.description.includes(year.toString())) {
-            return true;
-          }
-          
-          // Si no tiene información específica de años, incluirlo (fallback)
+        // Verificar si tiene información de precios por año
+        if (model.prices && model.prices_from && model.prices_to) {
+          // Si tiene rango de precios por año, verificar que el año esté en el rango
+          return year >= model.prices_from && year <= model.prices_to;
+        }
+        
+        // Verificar si tiene descripción que mencione el año específico
+        if (model.description && model.description.includes(year.toString())) {
           return true;
-        });
+        }
         
-        console.log(`📊 Modelos con filtrado permisivo para año ${year}:`, filteredModels.length);
-      }
+        // Verificar si tiene información de producción por año
+        if (model.production_years && Array.isArray(model.production_years)) {
+          return model.production_years.includes(parseInt(year));
+        }
+        
+        // Si no tiene información específica de años, NO incluirlo por defecto
+        // Solo incluirlo si explícitamente se confirma que es del año
+        return false;
+      });
 
-      // TERCERA ESTRATEGIA: Si aún no hay modelos, usar todos los modelos disponibles
+      console.log(`📊 Modelos que realmente salieron en ${year}:`, filteredModels.length);
+
+      // Si no hay modelos para ese año específico, mostrar mensaje informativo
       if (filteredModels.length === 0) {
-        console.log(`⚠️ No se encontraron modelos con filtrado permisivo, usando todos los modelos disponibles...`);
-        filteredModels = models;
+        console.log(`⚠️ No se encontraron modelos de la marca ${brandId} que hayan salido en ${year}`);
+        console.log(`💡 Esto puede indicar que la marca no produjo modelos en ese año específico`);
+        return [];
       }
-
-      console.log(`📊 Modelos finales para marca ${brandId} año ${year}:`, filteredModels.length);
 
       // Agrupar modelos por grupo base para evitar duplicados
       const groupedModels = new Map();
@@ -379,7 +375,7 @@ class InfoAutosApi {
         name: model.name
       }));
 
-      console.log(`✅ Modelos únicos agrupados para marca ${brandId} año ${year}:`, result.length);
+      console.log(`✅ Modelos únicos confirmados para marca ${brandId} año ${year}:`, result.length);
       return result;
 
     } catch (error) {

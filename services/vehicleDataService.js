@@ -141,46 +141,42 @@ class VehicleDataService {
       
       console.log(`📊 Total de versiones disponibles: ${allVersions.length}`);
       
-      // PRIMERA ESTRATEGIA: Filtrar versiones que tengan precios para el año específico
-      let filteredVersions = allVersions.filter(version => {
-        // Si la versión tiene información de precios por año, filtrar
+      // FILTRADO ESTRICTO: Solo versiones que realmente salieron en el año especificado
+      const filteredVersions = allVersions.filter(version => {
+        // Verificar si tiene información de años de producción
+        if (version.years && Array.isArray(version.years)) {
+          return version.years.includes(parseInt(year));
+        }
+        
+        // Verificar si tiene información de precios por año
         if (version.prices && version.prices_from && version.prices_to) {
           return year >= version.prices_from && year <= version.prices_to;
         }
+        
+        // Verificar si tiene descripción que mencione el año específico
+        if (version.description && version.description.includes(year.toString())) {
+          return true;
+        }
+        
+        // Verificar si tiene información de producción por año
+        if (version.production_years && Array.isArray(version.production_years)) {
+          return version.production_years.includes(parseInt(year));
+        }
+        
+        // Si no tiene información específica de años, NO incluirlo por defecto
         return false;
       });
       
-      console.log(`📊 Version filtradas estrictamente para año ${year}: ${filteredVersions.length}`);
+      console.log(`📊 Versiones que realmente salieron en ${year}: ${filteredVersions.length}`);
       
-      // SEGUNDA ESTRATEGIA: Si no hay versiones con filtrado estricto, usar filtrado más permisivo
+      // Si no hay versiones para ese año específico, mostrar mensaje informativo
       if (filteredVersions.length === 0) {
-        console.log(`⚠️ No se encontraron versiones con filtrado estricto para año ${year}, usando filtrado permisivo...`);
-        
-        filteredVersions = allVersions.filter(version => {
-          // Si tiene información de años, verificar que sea compatible
-          if (version.years && Array.isArray(version.years)) {
-            return version.years.includes(parseInt(year));
-          }
-          
-          // Si tiene descripción que mencione el año, incluirlo
-          if (version.description && version.description.includes(year.toString())) {
-            return true;
-          }
-          
-          // Si no tiene información específica de años, incluirlo (fallback)
-          return true;
-        });
-        
-        console.log(`📊 Versiones con filtrado permisivo para año ${year}: ${filteredVersions.length}`);
+        console.log(`⚠️ No se encontraron versiones del modelo ${modelId} que hayan salido en ${year}`);
+        console.log(`💡 Esto puede indicar que el modelo no tuvo versiones en ese año específico`);
+        return [];
       }
       
-      // TERCERA ESTRATEGIA: Si aún no hay versiones, usar todas las versiones disponibles
-      if (filteredVersions.length === 0) {
-        console.log(`⚠️ No se encontraron versiones con filtrado permisivo, usando todas las versiones disponibles...`);
-        filteredVersions = allVersions;
-      }
-      
-      console.log(`✅ Versiones finales para modelo ${modelId} año ${year}: ${filteredVersions.length} de ${allVersions.length}`);
+      console.log(`✅ Versiones confirmadas para modelo ${modelId} año ${year}: ${filteredVersions.length} de ${allVersions.length}`);
       
       return filteredVersions;
     } catch (error) {

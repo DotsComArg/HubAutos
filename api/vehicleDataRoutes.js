@@ -64,34 +64,24 @@ router.get('/years', async (req, res) => {
   }
 });
 
-// Obtener marcas por año específico
+// Obtener TODAS las marcas disponibles (sin filtrar por año)
 router.get('/brands', async (req, res) => {
   try {
-    const { year } = req.query;
-    
-    if (!year) {
-      return res.status(400).json({
-        success: false,
-        error: 'Parámetro "year" es requerido para obtener marcas'
-      });
-    }
-    
-    console.log(`🏷️ Solicitando marcas para año ${year}...`);
+    console.log(`🏷️ Solicitando TODAS las marcas disponibles...`);
     
     // Refrescar tokens si es necesario
     await vehicleService.refreshTokensIfNeeded();
     
-    // Obtener marcas filtradas por año
-    const brands = await vehicleService.getBrands(year);
+    // Obtener todas las marcas sin filtrar por año
+    const brands = await vehicleService.getAllBrands();
     
     res.json({
       success: true,
       data: brands,
-      source: 'infoautos',
-      year: year
+      source: 'infoautos'
     });
   } catch (error) {
-    console.error(`❌ Error obteniendo marcas para año ${req.query.year}:`, error);
+    console.error(`❌ Error obteniendo todas las marcas:`, error);
     res.status(500).json({
       success: false,
       error: error.message
