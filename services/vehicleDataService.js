@@ -139,18 +139,48 @@ class VehicleDataService {
         return [];
       }
       
-      // Filtrar versiones que tengan precios para el año específico
-      const filteredVersions = allVersions.filter(version => {
+      console.log(`📊 Total de versiones disponibles: ${allVersions.length}`);
+      
+      // PRIMERA ESTRATEGIA: Filtrar versiones que tengan precios para el año específico
+      let filteredVersions = allVersions.filter(version => {
         // Si la versión tiene información de precios por año, filtrar
         if (version.prices && version.prices_from && version.prices_to) {
           return year >= version.prices_from && year <= version.prices_to;
         }
-        
-        // Si no tiene información de precios por año, incluirla (fallback)
-        return true;
+        return false;
       });
       
-      console.log(`✅ Versiones filtradas para año ${year}: ${filteredVersions.length} de ${allVersions.length}`);
+      console.log(`📊 Version filtradas estrictamente para año ${year}: ${filteredVersions.length}`);
+      
+      // SEGUNDA ESTRATEGIA: Si no hay versiones con filtrado estricto, usar filtrado más permisivo
+      if (filteredVersions.length === 0) {
+        console.log(`⚠️ No se encontraron versiones con filtrado estricto para año ${year}, usando filtrado permisivo...`);
+        
+        filteredVersions = allVersions.filter(version => {
+          // Si tiene información de años, verificar que sea compatible
+          if (version.years && Array.isArray(version.years)) {
+            return version.years.includes(parseInt(year));
+          }
+          
+          // Si tiene descripción que mencione el año, incluirlo
+          if (version.description && version.description.includes(year.toString())) {
+            return true;
+          }
+          
+          // Si no tiene información específica de años, incluirlo (fallback)
+          return true;
+        });
+        
+        console.log(`📊 Versiones con filtrado permisivo para año ${year}: ${filteredVersions.length}`);
+      }
+      
+      // TERCERA ESTRATEGIA: Si aún no hay versiones, usar todas las versiones disponibles
+      if (filteredVersions.length === 0) {
+        console.log(`⚠️ No se encontraron versiones con filtrado permisivo, usando todas las versiones disponibles...`);
+        filteredVersions = allVersions;
+      }
+      
+      console.log(`✅ Versiones finales para modelo ${modelId} año ${year}: ${filteredVersions.length} de ${allVersions.length}`);
       
       return filteredVersions;
     } catch (error) {

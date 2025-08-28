@@ -301,6 +301,8 @@ class InfoAutosApi {
   // Obtener modelos por marca y año - Usar /brands/{brand_id}/models/
   async getModels(year, brandId) {
     try {
+      console.log(`🚗 Obteniendo modelos para marca ${brandId} año ${year}...`);
+      
       // Obtener TODOS los modelos de la marca (sin filtrar por año en la URL)
       const models = await this.makeRequest(`/brands/${brandId}/models/`, {
         query_mode: 'matching'
@@ -313,8 +315,8 @@ class InfoAutosApi {
 
       console.log(`📊 Total de modelos obtenidos para marca ${brandId}:`, models.length);
 
-      // Filtrar modelos que tengan precios para el año especificado
-      const filteredModels = models.filter(model => 
+      // PRIMERA ESTRATEGIA: Filtrar modelos que tengan precios para el año especificado
+      let filteredModels = models.filter(model => 
         model.prices && 
         model.prices_from && 
         model.prices_to && 
@@ -322,7 +324,38 @@ class InfoAutosApi {
         year <= model.prices_to
       );
 
-      console.log(`📊 Modelos filtrados para año ${year}:`, filteredModels.length);
+      console.log(`📊 Modelos filtrados estrictamente para año ${year}:`, filteredModels.length);
+
+      // SEGUNDA ESTRATEGIA: Si no hay modelos con filtrado estricto, usar filtrado más permisivo
+      if (filteredModels.length === 0) {
+        console.log(`⚠️ No se encontraron modelos con filtrado estricto para año ${year}, usando filtrado permisivo...`);
+        
+        // Filtrar modelos que tengan información de años (más permisivo)
+        filteredModels = models.filter(model => {
+          // Si tiene información de años, verificar que sea compatible
+          if (model.years && Array.isArray(model.years)) {
+            return model.years.includes(parseInt(year));
+          }
+          
+          // Si tiene descripción que mencione el año, incluirlo
+          if (model.description && model.description.includes(year.toString())) {
+            return true;
+          }
+          
+          // Si no tiene información específica de años, incluirlo (fallback)
+          return true;
+        });
+        
+        console.log(`📊 Modelos con filtrado permisivo para año ${year}:`, filteredModels.length);
+      }
+
+      // TERCERA ESTRATEGIA: Si aún no hay modelos, usar todos los modelos disponibles
+      if (filteredModels.length === 0) {
+        console.log(`⚠️ No se encontraron modelos con filtrado permisivo, usando todos los modelos disponibles...`);
+        filteredModels = models;
+      }
+
+      console.log(`📊 Modelos finales para marca ${brandId} año ${year}:`, filteredModels.length);
 
       // Agrupar modelos por grupo base para evitar duplicados
       const groupedModels = new Map();
