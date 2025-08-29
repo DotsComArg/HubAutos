@@ -325,6 +325,9 @@ class InfoAutosApi {
       console.log(`✅ Página ${currentPage}: ${firstResponse.data.length} modelos. Total acumulado: ${allModels.length} modelos`);
       
       // Extraer información de paginación del header x-pagination
+      console.log(`🔍 Headers disponibles:`, Object.keys(firstResponse.headers));
+      console.log(`🔍 Header x-pagination:`, firstResponse.headers['x-pagination']);
+      
       if (firstResponse.headers && firstResponse.headers['x-pagination']) {
         try {
           const paginationInfo = JSON.parse(firstResponse.headers['x-pagination']);
@@ -332,7 +335,10 @@ class InfoAutosApi {
           console.log(`📚 Paginación detectada: ${totalPages} páginas, ${paginationInfo.total} modelos totales`);
         } catch (parseError) {
           console.log('⚠️ Error parseando información de paginación, continuando...');
+          console.log('⚠️ Contenido del header:', firstResponse.headers['x-pagination']);
         }
+      } else {
+        console.log('⚠️ No se encontró header x-pagination, asumiendo 1 página');
       }
       
       // Si hay más páginas, procesarlas
@@ -585,6 +591,9 @@ class InfoAutosApi {
       console.log(`✅ Página ${currentPage} de versiones: ${firstResponse.data.length} versiones. Total acumulado: ${allVersions.length} versiones`);
       
       // Extraer información de paginación del header x-pagination
+      console.log(`🔍 Headers disponibles:`, Object.keys(firstResponse.headers));
+      console.log(`🔍 Header x-pagination:`, firstResponse.headers['x-pagination']);
+      
       if (firstResponse.headers && firstResponse.headers['x-pagination']) {
         try {
           const paginationInfo = JSON.parse(firstResponse.headers['x-pagination']);
@@ -592,7 +601,10 @@ class InfoAutosApi {
           console.log(`📚 Paginación detectada para versiones: ${totalPages} páginas, ${paginationInfo.total} versiones totales`);
         } catch (parseError) {
           console.log('⚠️ Error parseando información de paginación, continuando...');
+          console.log('⚠️ Contenido del header:', firstResponse.headers['x-pagination']);
         }
+      } else {
+        console.log('⚠️ No se encontró header x-pagination, asumiendo 1 página');
       }
       
       // Si hay más páginas, procesarlas
