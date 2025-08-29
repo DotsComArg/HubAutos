@@ -420,34 +420,23 @@ class InfoAutosApi {
               const totalPages = paginationInfo.total_pages;
               console.log(`📚 Paginación detectada: ${totalPages} páginas, ${paginationInfo.total} modelos totales`);
               
-              // Si sabemos el total de páginas, verificar si hemos llegado al final
-              if (currentPage >= totalPages) {
-                hasMorePages = false;
-                console.log(`🎯 Llegamos a la última página (${totalPages})`);
-              }
+              // Guardar el total de páginas para usar en la lógica de salida
+              this.totalPagesForBrand = totalPages;
             } catch (parseError) {
               console.log('⚠️ Error parseando información de paginación, continuando...');
             }
           }
           
-          // Si es la primera página y no hay headers de paginación, verificar si hay más datos
-          if (currentPage === 1 && (!response.headers || !response.headers['x-pagination'])) {
-            // Si la primera página tiene menos de 100 elementos, probablemente sea la única
-            if (response.data.length < 100) {
-              hasMorePages = false;
-              console.log('📚 Solo una página detectada (menos de 100 elementos)');
-            } else {
-              // Intentar obtener la siguiente página para ver si existe
-              console.log('🔍 Verificando si hay más páginas...');
-            }
+          // Verificar si hemos llegado al final basado en el total de páginas conocido
+          if (this.totalPagesForBrand && currentPage >= this.totalPagesForBrand) {
+            hasMorePages = false;
+            console.log(`🎯 Llegamos a la última página (${this.totalPagesForBrand})`);
           }
           
-          // Si no sabemos el total de páginas, verificar si la respuesta tiene menos de 100 elementos
-          if (!response.headers || !response.headers['x-pagination']) {
-            if (response.data.length < 100) {
-              hasMorePages = false;
-              console.log('📚 Última página detectada (menos de 100 elementos)');
-            }
+          // Si no tenemos información de paginación, verificar si la respuesta tiene menos de 100 elementos
+          if (!this.totalPagesForBrand && response.data.length < 100) {
+            hasMorePages = false;
+            console.log('📚 Última página detectada (menos de 100 elementos)');
           }
           
           currentPage++;
@@ -487,6 +476,7 @@ class InfoAutosApi {
       }
       
       console.log(`🎯 Procesamiento de páginas completado. Total de modelos: ${allModels.length}`);
+      console.log(`📊 Páginas procesadas: ${currentPage - 1}, Total esperado: ${this.totalPagesForBrand || 'desconocido'}`);
 
       // Agrupar modelos por grupo base para evitar duplicados (sin filtrar por año)
       const groupedModels = new Map();
@@ -569,34 +559,23 @@ class InfoAutosApi {
               const totalPages = paginationInfo.total_pages;
               console.log(`📚 Paginación detectada para versiones: ${totalPages} páginas, ${paginationInfo.total} versiones totales`);
               
-              // Si sabemos el total de páginas, verificar si hemos llegado al final
-              if (currentPage >= totalPages) {
-                hasMorePages = false;
-                console.log(`🎯 Llegamos a la última página de versiones (${totalPages})`);
-              }
+              // Guardar el total de páginas para usar en la lógica de salida
+              this.totalPagesForVersions = totalPages;
             } catch (parseError) {
               console.log('⚠️ Error parseando información de paginación, continuando...');
             }
           }
           
-          // Si es la primera página y no hay headers de paginación, verificar si hay más datos
-          if (currentPage === 1 && (!response.headers || !response.headers['x-pagination'])) {
-            // Si la primera página tiene menos de 100 elementos, probablemente sea la única
-            if (response.data.length < 100) {
-              hasMorePages = false;
-              console.log('📚 Solo una página de versiones detectada (menos de 100 elementos)');
-            } else {
-              // Intentar obtener la siguiente página para ver si existe
-              console.log('🔍 Verificando si hay más páginas de versiones...');
-            }
+          // Verificar si hemos llegado al final basado en el total de páginas conocido
+          if (this.totalPagesForVersions && currentPage >= this.totalPagesForVersions) {
+            hasMorePages = false;
+            console.log(`🎯 Llegamos a la última página de versiones (${this.totalPagesForVersions})`);
           }
           
-          // Si no sabemos el total de páginas, verificar si la respuesta tiene menos de 100 elementos
-          if (!response.headers || !response.headers['x-pagination']) {
-            if (response.data.length < 100) {
-              hasMorePages = false;
-              console.log('📚 Última página de versiones detectada (menos de 100 elementos)');
-            }
+          // Si no tenemos información de paginación, verificar si la respuesta tiene menos de 100 elementos
+          if (!this.totalPagesForVersions && response.data.length < 100) {
+            hasMorePages = false;
+            console.log('📚 Última página de versiones detectada (menos de 100 elementos)');
           }
           
           currentPage++;
@@ -636,6 +615,7 @@ class InfoAutosApi {
       }
       
       console.log(`🎯 Procesamiento de páginas de versiones completado. Total de versiones: ${allVersions.length}`);
+      console.log(`📊 Páginas procesadas: ${currentPage - 1}, Total esperado: ${this.totalPagesForVersions || 'desconocido'}`);
 
       // ✅ DEVOLVER VERSIONES COMPLETAS CON TODA LA INFORMACIÓN
       const formattedVersions = allVersions.map(version => {
