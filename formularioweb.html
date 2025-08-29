@@ -875,7 +875,8 @@ async function loadModels(brandId, year) {
     // Mostrar mensaje de loading
     showLoadingStatus('Cargando modelos disponibles para el año seleccionado...');
     
-    // Cargar TODOS los modelos de la marca (sin filtro de año)
+    // ✅ USAR ENDPOINT CON PAGINACIÓN IMPLEMENTADA
+    // Cargar TODOS los modelos de la marca usando el endpoint que ya tiene paginación
     const allModels = await fetchWithCache(`/brands/${brandId}/models`);
     
     // Filtrar modelos por rango de años (prices_from y prices_to)
@@ -950,7 +951,8 @@ async function loadVersions(brandId, modelId, year) {
     // Mostrar mensaje de loading
     showLoadingStatus('Cargando versiones disponibles para el año seleccionado...');
     
-    // Cargar TODAS las versiones del modelo (sin filtro de año)
+    // ✅ USAR ENDPOINT CON PAGINACIÓN IMPLEMENTADA
+    // Cargar TODAS las versiones del modelo usando el endpoint que ya tiene paginación
     const allVersions = await fetchWithCache(`/brands/${brandId}/groups/${modelId}/models`);
     
     // Filtrar versiones por rango de años (prices_from y prices_to)
