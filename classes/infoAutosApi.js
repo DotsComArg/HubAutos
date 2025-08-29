@@ -298,25 +298,81 @@ class InfoAutosApi {
     }
   }
 
-  // Obtener modelos por marca y año - Usar /brands/{brand_id}/models/
+  // Obtener modelos por marca y año - Usar /brands/{brand_id}/models/ CON PAGINACIÓN
   async getModels(year, brandId) {
     try {
       console.log(`🚗 Obteniendo modelos para marca ${brandId} año ${year}...`);
       
-      // Obtener TODOS los modelos de la marca (sin filtrar por año en la URL)
-      const models = await this.makeRequest(`/brands/${brandId}/models/`, {
-        query_mode: 'matching'
-      });
-
-      if (!models || !Array.isArray(models)) {
-        console.log('⚠️ Respuesta de models no válida');
+      let allModels = [];
+      let currentPage = 1;
+      let totalPages = 1;
+      
+      // Primera llamada para obtener información de paginación
+      console.log(`📄 Obteniendo página ${currentPage} para detectar paginación...`);
+      const firstResponse = await this.makeRequest(`/brands/${brandId}/models/`, {
+        query_mode: 'matching',
+        page: currentPage,
+        page_size: 100
+      }, true);
+      
+      if (!firstResponse.data || !Array.isArray(firstResponse.data)) {
+        console.log('⚠️ Primera página: respuesta no válida');
         return [];
       }
-
-      console.log(`📊 Total de modelos obtenidos para marca ${brandId}:`, models.length);
+      
+      // Agregar modelos de la primera página
+      allModels = allModels.concat(firstResponse.data);
+      console.log(`✅ Página ${currentPage}: ${firstResponse.data.length} modelos. Total acumulado: ${allModels.length} modelos`);
+      
+      // Extraer información de paginación del header x-pagination
+      if (firstResponse.headers && firstResponse.headers['x-pagination']) {
+        try {
+          const paginationInfo = JSON.parse(firstResponse.headers['x-pagination']);
+          totalPages = paginationInfo.total_pages;
+          console.log(`📚 Paginación detectada: ${totalPages} páginas, ${paginationInfo.total} modelos totales`);
+        } catch (parseError) {
+          console.log('⚠️ Error parseando información de paginación, continuando...');
+        }
+      }
+      
+      // Si hay más páginas, procesarlas
+      if (totalPages > 1) {
+        console.log(`🔄 Procesando ${totalPages - 1} páginas adicionales...`);
+        
+        for (let page = 2; page <= totalPages; page++) {
+          try {
+            console.log(`📄 Obteniendo página ${page} de ${totalPages}...`);
+            
+            const response = await this.makeRequest(`/brands/${brandId}/models/`, {
+              query_mode: 'matching',
+              page: page,
+              page_size: 100
+            });
+            
+            if (response && Array.isArray(response)) {
+              allModels = allModels.concat(response);
+              console.log(`✅ Página ${page}: ${response.length} modelos. Total acumulado: ${allModels.length} modelos`);
+            } else {
+              console.log(`⚠️ Página ${page}: respuesta no válida`);
+            }
+            
+            // Delay entre páginas para respetar rate limiting
+            if (page < totalPages) {
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+          } catch (pageError) {
+            console.error(`❌ Error en página ${page}:`, pageError);
+            // Continuar con la siguiente página
+          }
+        }
+      }
+      
+      console.log(`🎯 Procesamiento de páginas completado. Total de modelos: ${allModels.length}`);
+      console.log(`📊 Páginas procesadas: ${totalPages}, Total esperado: ${totalPages}`);
 
       // FILTRADO PRINCIPAL: Solo modelos que realmente salieron en el año especificado
-      const filteredModels = models.filter(model => {
+      const filteredModels = allModels.filter(model => {
         // Verificar si el modelo tiene información de años de producción
         if (model.years && Array.isArray(model.years)) {
           // Si tiene array de años, verificar que el año esté incluido
