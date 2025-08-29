@@ -419,12 +419,15 @@ class InfoAutosApi {
       // Si hay más páginas, procesarlas en lotes para mejor performance
       if (totalPages > 1) {
         console.log(`🚀 Procesando ${totalPages - 1} páginas restantes en lotes...`);
+        console.log(`📊 Páginas totales a procesar: ${totalPages}, modelos esperados: ~${totalPages * 20}`);
         
         // Procesar páginas en lotes de 5 para balancear velocidad y rate limiting
         const batchSize = 5;
+        let processedPages = 1; // Ya procesamos la página 1
+        
         for (let batchStart = 2; batchStart <= totalPages; batchStart += batchSize) {
           const batchEnd = Math.min(batchStart + batchSize - 1, totalPages);
-          console.log(`📄 Procesando lote: páginas ${batchStart} a ${batchEnd}...`);
+          console.log(`📄 Procesando lote: páginas ${batchStart} a ${batchEnd} (${processedPages}/${totalPages} completadas)...`);
           
           // Crear array de promesas para este lote
           const batchPromises = [];
@@ -443,23 +446,32 @@ class InfoAutosApi {
             const batchResults = await Promise.all(batchPromises);
             
             // Agregar resultados al total
+            let modelsInThisBatch = 0;
             batchResults.forEach((models, index) => {
               if (models && Array.isArray(models)) {
                 allModels = allModels.concat(models);
+                modelsInThisBatch += models.length;
                 console.log(`✅ Página ${batchStart + index}: ${models.length} modelos`);
               }
             });
             
+            processedPages += (batchEnd - batchStart + 1);
+            console.log(`📊 Lote completado: ${modelsInThisBatch} modelos en este lote. Total acumulado: ${allModels.length} modelos`);
+            
             // Delay reducido entre lotes (no entre páginas individuales)
             if (batchEnd < totalPages) {
+              console.log(`⏳ Esperando 50ms antes del siguiente lote...`);
               await new Promise(resolve => setTimeout(resolve, 50)); // Solo 50ms entre lotes
             }
             
           } catch (batchError) {
             console.error(`❌ Error en lote ${batchStart}-${batchEnd}:`, batchError);
+            console.log(`⚠️ Continuando con el siguiente lote...`);
             // Continuar con el siguiente lote en lugar de fallar completamente
           }
         }
+        
+        console.log(`🎯 Procesamiento de lotes completado. Páginas procesadas: ${processedPages}/${totalPages}`);
       }
 
       console.log(`📊 Total de modelos obtenidos para marca ${brandId}: ${allModels.length}`);
@@ -544,12 +556,15 @@ class InfoAutosApi {
       // Si hay más páginas, procesarlas en lotes para mejor performance
       if (totalPages > 1) {
         console.log(`🚀 Procesando ${totalPages - 1} páginas restantes de versiones en lotes...`);
+        console.log(`📊 Páginas totales a procesar: ${totalPages}, versiones esperadas: ~${totalPages * 20}`);
         
         // Procesar páginas en lotes de 5 para balancear velocidad y rate limiting
         const batchSize = 5;
+        let processedPages = 1; // Ya procesamos la página 1
+        
         for (let batchStart = 2; batchStart <= totalPages; batchStart += batchSize) {
           const batchEnd = Math.min(batchStart + batchSize - 1, totalPages);
-          console.log(`📄 Procesando lote de versiones: páginas ${batchStart} a ${batchEnd}...`);
+          console.log(`📄 Procesando lote de versiones: páginas ${batchStart} a ${batchEnd} (${processedPages}/${totalPages} completadas)...`);
           
           // Crear array de promesas para este lote
           const batchPromises = [];
@@ -568,23 +583,32 @@ class InfoAutosApi {
             const batchResults = await Promise.all(batchPromises);
             
             // Agregar resultados al total
+            let versionsInThisBatch = 0;
             batchResults.forEach((versions, index) => {
               if (versions && Array.isArray(versions)) {
                 allVersions = allVersions.concat(versions);
+                versionsInThisBatch += versions.length;
                 console.log(`✅ Página ${batchStart + index} de versiones: ${versions.length} versiones`);
               }
             });
             
+            processedPages += (batchEnd - batchStart + 1);
+            console.log(`📊 Lote de versiones completado: ${versionsInThisBatch} versiones en este lote. Total acumulado: ${allVersions.length} versiones`);
+            
             // Delay reducido entre lotes (no entre páginas individuales)
             if (batchEnd < totalPages) {
+              console.log(`⏳ Esperando 50ms antes del siguiente lote de versiones...`);
               await new Promise(resolve => setTimeout(resolve, 50)); // Solo 50ms entre lotes
             }
             
           } catch (batchError) {
             console.error(`❌ Error en lote de versiones ${batchStart}-${batchEnd}:`, batchError);
+            console.log(`⚠️ Continuando con el siguiente lote de versiones...`);
             // Continuar con el siguiente lote en lugar de fallar completamente
           }
         }
+        
+        console.log(`🎯 Procesamiento de lotes de versiones completado. Páginas procesadas: ${processedPages}/${totalPages}`);
       }
 
       console.log(`📊 Total de versiones obtenidas para grupo ${modelId}: ${allVersions.length}`);
