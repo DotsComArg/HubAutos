@@ -185,6 +185,28 @@ class VehicleDataService {
     }
   }
 
+  // Obtener TODAS las versiones de un grupo de modelo (sin filtrar por año)
+  async getAllVersionsForGroup(brandId, groupId) {
+    try {
+      console.log(`🔧 Obteniendo TODAS las versiones para grupo ${groupId} de marca ${brandId} desde Info Autos...`);
+      
+      // Obtener todas las versiones del grupo
+      const allVersions = await this.infoAutosApi.getVersions(brandId, groupId);
+      
+      if (!allVersions || allVersions.length === 0) {
+        console.log('⚠️ No se encontraron versiones para el grupo');
+        return [];
+      }
+      
+      console.log(`📊 Total de versiones disponibles para grupo ${groupId}: ${allVersions.length}`);
+      
+      return allVersions;
+    } catch (error) {
+      console.error(`❌ Error obteniendo versiones para grupo ${groupId}:`, error);
+      return [];
+    }
+  }
+
   // Verificar estado de la conexión
   async checkConnection() {
     try {

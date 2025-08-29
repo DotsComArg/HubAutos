@@ -89,13 +89,12 @@ router.get('/brands', async (req, res) => {
   }
 });
 
-// Obtener modelos por marca y año específico
+// Obtener TODOS los modelos de una marca (sin filtrar por año)
 router.get('/brands/:brandId/models', async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { year } = req.query;
     
-    console.log(`🚗 Solicitando modelos para marca ${brandId} año ${year}...`);
+    console.log(`🚗 Solicitando TODOS los modelos para marca ${brandId}...`);
     
     if (!brandId) {
       return res.status(400).json({
@@ -104,28 +103,20 @@ router.get('/brands/:brandId/models', async (req, res) => {
       });
     }
     
-    if (!year) {
-      return res.status(400).json({
-        success: false,
-        error: 'Parámetro "year" es requerido para obtener modelos'
-      });
-    }
-    
     // Refrescar tokens si es necesario
     await vehicleService.refreshTokensIfNeeded();
     
-    // Obtener modelos filtrados por año
-    const models = await vehicleService.getModels(year, brandId);
+    // Obtener TODOS los modelos de la marca (sin filtrar por año)
+    const models = await vehicleService.getAllModelsForBrand(brandId);
     
     res.json({
       success: true,
       data: models,
       source: 'infoautos',
-      brandId: brandId,
-      year: year
+      brandId: brandId
     });
   } catch (error) {
-    console.error(`❌ Error obteniendo modelos para marca ${req.params.brandId} año ${req.query.year}:`, error);
+    console.error(`❌ Error obteniendo modelos para marca ${req.params.brandId}:`, error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -133,13 +124,12 @@ router.get('/brands/:brandId/models', async (req, res) => {
   }
 });
 
-// Obtener versiones por grupo de modelo y año específico
+// Obtener TODAS las versiones de un grupo de modelo (sin filtrar por año)
 router.get('/brands/:brandId/groups/:groupId/models', async (req, res) => {
   try {
     const { brandId, groupId } = req.params;
-    const { year } = req.query;
     
-    console.log(`🔧 Solicitando versiones para grupo ${groupId} de marca ${brandId} año ${year}...`);
+    console.log(`🔧 Solicitando TODAS las versiones para grupo ${groupId} de marca ${brandId}...`);
     
     if (!brandId) {
       return res.status(400).json({
@@ -155,26 +145,18 @@ router.get('/brands/:brandId/groups/:groupId/models', async (req, res) => {
       });
     }
     
-    if (!year) {
-      return res.status(400).json({
-        success: false,
-        error: 'Parámetro "year" es requerido para obtener versiones'
-      });
-    }
-    
     // Refrescar tokens si es necesario
     await vehicleService.refreshTokensIfNeeded();
     
-    // Obtener versiones filtradas por año
-    const versions = await vehicleService.getVersionsByYear(brandId, groupId, year);
+    // Obtener TODAS las versiones del grupo (sin filtrar por año)
+    const versions = await vehicleService.getAllVersionsForGroup(brandId, groupId);
     
     res.json({
       success: true,
       data: versions,
       source: 'infoautos',
       brandId: brandId,
-      groupId: groupId,
-      year: year
+      groupId: groupId
     });
   } catch (error) {
     console.error(`❌ Error obteniendo versiones para grupo ${req.params.groupId} año ${req.query.year}:`, error);
