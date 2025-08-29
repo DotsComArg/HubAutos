@@ -384,99 +384,78 @@ class InfoAutosApi {
     }
   }
 
-  // Obtener TODOS los modelos de una marca (sin filtrar por año) - OPTIMIZADO
+  // Obtener TODOS los modelos de una marcasdasda (sin filtrar por año) - CORREGIDO
   async getAllModelsForBrand(brandId) {
     try {
       console.log(`🚗 Obteniendo TODOS los modelos para marca ${brandId} (sin filtrar por año)...`);
       
       let allModels = [];
       let currentPage = 1;
-      let hasMorePages = true;
+      let totalPages = 1;
       
-      // Procesar páginas hasta que no haya más
-      while (hasMorePages) {
-        console.log(`📄 Procesando página ${currentPage}...`);
-        
+      // Primera llamada para obtener información de paginación
+      console.log(`📄 Obteniendo página ${currentPage} para detectar paginación...`);
+      const firstResponse = await this.makeRequest(`/brands/${brandId}/models/`, {
+        query_mode: 'matching',
+        page: currentPage,
+        page_size: 100
+      }, true);
+      
+      if (!firstResponse.data || !Array.isArray(firstResponse.data)) {
+        console.log('⚠️ Primera página: respuesta no válida');
+        return [];
+      }
+      
+      // Agregar modelos de la primera página
+      allModels = allModels.concat(firstResponse.data);
+      console.log(`✅ Página ${currentPage}: ${firstResponse.data.length} modelos. Total acumulado: ${allModels.length} modelos`);
+      
+      // Extraer información de paginación del header x-pagination
+      if (firstResponse.headers && firstResponse.headers['x-pagination']) {
         try {
-          const response = await this.makeRequest(`/brands/${brandId}/models/`, {
-            query_mode: 'matching',
-            page: currentPage,
-            page_size: 100 // ✅ USAR MÁXIMO PERMITIDO: 100 en lugar de 20
-          }, true); // getHeaders = true para obtener los headers
-          
-          if (!response.data || !Array.isArray(response.data)) {
-            console.log(`⚠️ Página ${currentPage}: respuesta no válida`);
-            break;
-          }
-          
-          // Agregar modelos de esta página
-          allModels = allModels.concat(response.data);
-          console.log(`✅ Página ${currentPage}: ${response.data.length} modelos. Total acumulado: ${allModels.length} modelos`);
-          
-          // Verificar si hay más páginas
-          if (currentPage === 1 && response.headers && response.headers['x-pagination']) {
-            try {
-              const paginationInfo = JSON.parse(response.headers['x-pagination']);
-              const totalPages = paginationInfo.total_pages;
-              console.log(`📚 Paginación detectada: ${totalPages} páginas, ${paginationInfo.total} modelos totales`);
-              
-              // Guardar el total de páginas para usar en la lógica de salida
-              this.totalPagesForBrand = totalPages;
-            } catch (parseError) {
-              console.log('⚠️ Error parseando información de paginación, continuando...');
+          const paginationInfo = JSON.parse(firstResponse.headers['x-pagination']);
+          totalPages = paginationInfo.total_pages;
+          console.log(`📚 Paginación detectada: ${totalPages} páginas, ${paginationInfo.total} modelos totales`);
+        } catch (parseError) {
+          console.log('⚠️ Error parseando información de paginación, continuando...');
+        }
+      }
+      
+      // Si hay más páginas, procesarlas
+      if (totalPages > 1) {
+        console.log(`🔄 Procesando ${totalPages - 1} páginas adicionales...`);
+        
+        for (let page = 2; page <= totalPages; page++) {
+          try {
+            console.log(`📄 Obteniendo página ${page} de ${totalPages}...`);
+            
+            const response = await this.makeRequest(`/brands/${brandId}/models/`, {
+              query_mode: 'matching',
+              page: page,
+              page_size: 100
+            });
+            
+            if (response && Array.isArray(response)) {
+              allModels = allModels.concat(response);
+              console.log(`✅ Página ${page}: ${response.length} modelos. Total acumulado: ${allModels.length} modelos`);
+            } else {
+              console.log(`⚠️ Página ${page}: respuesta no válida`);
             }
-          }
-          
-          // Verificar si hemos llegado al final basado en el total de páginas conocido
-          if (this.totalPagesForBrand && currentPage >= this.totalPagesForBrand) {
-            hasMorePages = false;
-            console.log(`🎯 Llegamos a la última página (${this.totalPagesForBrand})`);
-          }
-          
-          // Si no tenemos información de paginación, verificar si la respuesta tiene menos de 100 elementos
-          if (!this.totalPagesForBrand && response.data.length < 100) {
-            hasMorePages = false;
-            console.log('📚 Última página detectada (menos de 100 elementos)');
-          }
-          
-          currentPage++;
-          
-          // Delay mínimo entre páginas para respetar rate limiting
-          if (hasMorePages) {
-            await new Promise(resolve => setTimeout(resolve, 50)); // 50ms entre páginas
-          }
-          
-        } catch (pageError) {
-          console.error(`❌ Error en página ${currentPage}:`, pageError);
-          
-          // Si es un error de autenticación o token, intentar renovar
-          if (pageError.response && (pageError.response.status === 401 || pageError.response.status === 403)) {
-            console.log('🔄 Error de autenticación, intentando renovar token...');
-            try {
-              await this.ensureValidToken();
-              // Reintentar la página actual
-              currentPage--;
-              continue;
-            } catch (refreshError) {
-              console.error('❌ Error renovando token:', refreshError);
-              break;
+            
+            // Delay entre páginas para respetar rate limiting
+            if (page < totalPages) {
+              await new Promise(resolve => setTimeout(resolve, 100));
             }
-          }
-          
-          // Para otros errores, continuar con la siguiente página
-          console.log(`⚠️ Continuando con la siguiente página...`);
-          currentPage++;
-          
-          // Si hemos tenido muchos errores consecutivos, parar
-          if (currentPage > 20) {
-            console.log('⚠️ Demasiados errores consecutivos, parando paginación');
-            break;
+            
+          } catch (pageError) {
+            console.error(`❌ Error en página ${page}:`, pageError);
+            // Continuar con la siguiente página
           }
         }
       }
       
       console.log(`🎯 Procesamiento de páginas completado. Total de modelos: ${allModels.length}`);
-      console.log(`📊 Páginas procesadas: ${currentPage - 1}, Total esperado: ${this.totalPagesForBrand || 'desconocido'}`);
+      console.log(`📊 Páginas procesadas: ${totalPages}, Total esperado: ${totalPages}`);
 
       // Agrupar modelos por grupo base para evitar duplicados (sin filtrar por año)
       const groupedModels = new Map();
@@ -523,99 +502,78 @@ class InfoAutosApi {
     }
   }
 
-  // Obtener TODAS las versiones de un modelo (sin filtrar por año) - OPTIMIZADO
+  // Obtener TODAS las versiones de un modelo (sin filtrar por año) - CORREGIDO
   async getVersions(brandId, modelId) {
     try {
       console.log(`🔧 Obteniendo TODAS las versiones para grupo ${modelId} de marca ${brandId}...`);
       
       let allVersions = [];
       let currentPage = 1;
-      let hasMorePages = true;
+      let totalPages = 1;
       
-      // Procesar páginas hasta que no haya más
-      while (hasMorePages) {
-        console.log(`📄 Procesando página ${currentPage} de versiones...`);
-        
+      // Primera llamada para obtener información de paginación
+      console.log(`📄 Obteniendo página ${currentPage} de versiones para detectar paginación...`);
+      const firstResponse = await this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
+        query_mode: 'matching',
+        page: currentPage,
+        page_size: 100
+      }, true);
+      
+      if (!firstResponse.data || !Array.isArray(firstResponse.data)) {
+        console.log('⚠️ Primera página de versiones: respuesta no válida');
+        return [];
+      }
+      
+      // Agregar versiones de la primera página
+      allVersions = allVersions.concat(firstResponse.data);
+      console.log(`✅ Página ${currentPage} de versiones: ${firstResponse.data.length} versiones. Total acumulado: ${allVersions.length} versiones`);
+      
+      // Extraer información de paginación del header x-pagination
+      if (firstResponse.headers && firstResponse.headers['x-pagination']) {
         try {
-          const response = await this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
-            query_mode: 'matching',
-            page: currentPage,
-            page_size: 100 // ✅ USAR MÁXIMO PERMITIDO: 100 en lugar de 20
-          }, true); // getHeaders = true para obtener los headers
-          
-          if (!response.data || !Array.isArray(response.data)) {
-            console.log(`⚠️ Página ${currentPage} de versiones: respuesta no válida`);
-            break;
-          }
-          
-          // Agregar versiones de esta página
-          allVersions = allVersions.concat(response.data);
-          console.log(`✅ Página ${currentPage} de versiones: ${response.data.length} versiones. Total acumulado: ${allVersions.length} versiones`);
-          
-          // Verificar si hay más páginas
-          if (currentPage === 1 && response.headers && response.headers['x-pagination']) {
-            try {
-              const paginationInfo = JSON.parse(response.headers['x-pagination']);
-              const totalPages = paginationInfo.total_pages;
-              console.log(`📚 Paginación detectada para versiones: ${totalPages} páginas, ${paginationInfo.total} versiones totales`);
-              
-              // Guardar el total de páginas para usar en la lógica de salida
-              this.totalPagesForVersions = totalPages;
-            } catch (parseError) {
-              console.log('⚠️ Error parseando información de paginación, continuando...');
+          const paginationInfo = JSON.parse(firstResponse.headers['x-pagination']);
+          totalPages = paginationInfo.total_pages;
+          console.log(`📚 Paginación detectada para versiones: ${totalPages} páginas, ${paginationInfo.total} versiones totales`);
+        } catch (parseError) {
+          console.log('⚠️ Error parseando información de paginación, continuando...');
+        }
+      }
+      
+      // Si hay más páginas, procesarlas
+      if (totalPages > 1) {
+        console.log(`🔄 Procesando ${totalPages - 1} páginas adicionales de versiones...`);
+        
+        for (let page = 2; page <= totalPages; page++) {
+          try {
+            console.log(`📄 Obteniendo página ${page} de ${totalPages} de versiones...`);
+            
+            const response = await this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
+              query_mode: 'matching',
+              page: page,
+              page_size: 100
+            });
+            
+            if (response && Array.isArray(response)) {
+              allVersions = allVersions.concat(response);
+              console.log(`✅ Página ${page} de versiones: ${response.length} versiones. Total acumulado: ${allVersions.length} versiones`);
+            } else {
+              console.log(`⚠️ Página ${page} de versiones: respuesta no válida`);
             }
-          }
-          
-          // Verificar si hemos llegado al final basado en el total de páginas conocido
-          if (this.totalPagesForVersions && currentPage >= this.totalPagesForVersions) {
-            hasMorePages = false;
-            console.log(`🎯 Llegamos a la última página de versiones (${this.totalPagesForVersions})`);
-          }
-          
-          // Si no tenemos información de paginación, verificar si la respuesta tiene menos de 100 elementos
-          if (!this.totalPagesForVersions && response.data.length < 100) {
-            hasMorePages = false;
-            console.log('📚 Última página de versiones detectada (menos de 100 elementos)');
-          }
-          
-          currentPage++;
-          
-          // Delay mínimo entre páginas para respetar rate limiting
-          if (hasMorePages) {
-            await new Promise(resolve => setTimeout(resolve, 50)); // 50ms entre páginas
-          }
-          
-        } catch (pageError) {
-          console.error(`❌ Error en página ${currentPage} de versiones:`, pageError);
-          
-          // Si es un error de autenticación o token, intentar renovar
-          if (pageError.response && (pageError.response.status === 401 || pageError.response.status === 403)) {
-            console.log('🔄 Error de autenticación, intentando renovar token...');
-            try {
-              await this.ensureValidToken();
-              // Reintentar la página actual
-              currentPage--;
-              continue;
-            } catch (refreshError) {
-              console.error('❌ Error renovando token:', refreshError);
-              break;
+            
+            // Delay entre páginas para respetar rate limiting
+            if (page < totalPages) {
+              await new Promise(resolve => setTimeout(resolve, 100));
             }
-          }
-          
-          // Para otros errores, continuar con la siguiente página
-          console.log(`⚠️ Continuando con la siguiente página de versiones...`);
-          currentPage++;
-          
-          // Si hemos tenido muchos errores consecutivos, parar
-          if (currentPage > 20) {
-            console.log('⚠️ Demasiados errores consecutivos, parando paginación de versiones');
-            break;
+            
+          } catch (pageError) {
+            console.error(`❌ Error en página ${page} de versiones:`, pageError);
+            // Continuar con la siguiente página
           }
         }
       }
       
       console.log(`🎯 Procesamiento de páginas de versiones completado. Total de versiones: ${allVersions.length}`);
-      console.log(`📊 Páginas procesadas: ${currentPage - 1}, Total esperado: ${this.totalPagesForVersions || 'desconocido'}`);
+      console.log(`📊 Páginas procesadas: ${totalPages}, Total esperado: ${totalPages}`);
 
       // ✅ DEVOLVER VERSIONES COMPLETAS CON TODA LA INFORMACIÓN
       const formattedVersions = allVersions.map(version => {
