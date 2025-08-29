@@ -458,16 +458,30 @@ class InfoAutosApi {
           groupedModels.set(groupKey, {
             id: groupId,
             name: groupKey,
-            fullDescription: model.description || 'Modelo sin nombre'
+            fullDescription: model.description || 'Modelo sin nombre',
+            // ✅ AGREGAR TODA LA INFORMACIÓN DE PRECIOS
+            prices: model.prices,
+            prices_from: model.prices_from,
+            prices_to: model.prices_to,
+            // ✅ AGREGAR OTROS CAMPOS ÚTILES
+            description: model.description,
+            photo_url: model.photo_url,
+            list_price: model.list_price,
+            as_codia: model.as_codia,
+            codia: model.codia,
+            features: model.features,
+            brand: model.brand,
+            group: model.group,
+            position: model.position,
+            r_codia: model.r_codia,
+            summary: model.summary,
+            similarity: model.similarity
           });
         }
       });
 
-      // Convertir a formato esperado por el frontend
-      const result = Array.from(groupedModels.values()).map(model => ({
-        id: model.id.toString(),
-        name: model.name
-      }));
+      // ✅ DEVOLVER MODELOS COMPLETOS CON TODA LA INFORMACIÓN
+      const result = Array.from(groupedModels.values());
 
       console.log(`✅ Modelos únicos agrupados para marca ${brandId} (sin filtrar por año):`, result.length);
       return result;
@@ -541,7 +555,7 @@ class InfoAutosApi {
 
       console.log(`📊 Total de versiones obtenidas para grupo ${modelId}: ${allVersions.length}`);
 
-      // Convertir a formato esperado por el frontend (sin filtrar por año)
+      // ✅ DEVOLVER VERSIONES COMPLETAS CON TODA LA INFORMACIÓN
       const formattedVersions = allVersions.map(version => {
         let versionName = version.description || 'Versión sin nombre';
         
@@ -558,7 +572,24 @@ class InfoAutosApi {
 
         return {
           id: version.codia.toString(),
-          name: versionName
+          name: versionName,
+          // ✅ AGREGAR TODA LA INFORMACIÓN DE PRECIOS
+          prices: version.prices,
+          prices_from: version.prices_from,
+          prices_to: version.prices_to,
+          // ✅ AGREGAR OTROS CAMPOS ÚTILES
+          description: version.description,
+          photo_url: version.photo_url,
+          list_price: version.list_price,
+          as_codia: version.as_codia,
+          codia: version.codia,
+          features: version.features,
+          brand: version.brand,
+          group: version.group,
+          position: version.position,
+          r_codia: version.r_codia,
+          summary: version.summary,
+          similarity: version.similarity
         };
       });
 

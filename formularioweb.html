@@ -875,14 +875,43 @@ async function loadModels(brandId, year) {
     // Mostrar mensaje de loading
     showLoadingStatus('Cargando modelos disponibles para el año seleccionado...');
     
-    // Cargar modelos filtrados por año
-    const models = await fetchWithCache(`/brands/${brandId}/models?year=${year}`);
-    populateSelect(document.getElementById('model'), models, 'Seleccioná modelo');
+    // Cargar TODOS los modelos de la marca (sin filtro de año)
+    const allModels = await fetchWithCache(`/brands/${brandId}/models`);
+    
+    // Filtrar modelos por rango de años (prices_from y prices_to)
+    const filteredModels = allModels.filter(model => {
+      // Debug: mostrar información del modelo
+      console.log(`🔍 Modelo: ${model.name} - prices: ${model.prices}, from: ${model.prices_from}, to: ${model.prices_to}`);
+      
+      // Si no tiene precios definidos, no mostrar
+      if (!model.prices) {
+        console.log(`❌ ${model.name}: No tiene precios`);
+        return false;
+      }
+      
+      // Si tiene precios pero no tiene rango de años, no mostrar
+      if (model.prices && (!model.prices_from || !model.prices_to)) {
+        console.log(`❌ ${model.name}: Tiene precios pero no rango de años`);
+        return false;
+      }
+      
+      // Verificar si el año seleccionado está dentro del rango
+      const yearNum = parseInt(year);
+      const fromYear = parseInt(model.prices_from);
+      const toYear = parseInt(model.prices_to);
+      
+      const isInRange = yearNum >= fromYear && yearNum <= toYear;
+      console.log(`📊 ${model.name}: Año ${yearNum} en rango ${fromYear}-${toYear}? ${isInRange}`);
+      
+      return isInRange;
+    });
+    
+    populateSelect(document.getElementById('model'), filteredModels, 'Seleccioná modelo');
     
     // Ocultar mensaje de loading
     hideLoadingStatus();
     
-    console.log(`✅ Modelos cargados desde Info Autos para marca ${brandId} año ${year}:`, models.length);
+    console.log(`✅ Modelos filtrados por año ${year}: ${filteredModels.length} de ${allModels.length} totales`);
   } catch (error) {
     hideLoadingStatus();
     showError(document.getElementById('model'), 'Error cargando modelos desde Info Autos');
@@ -904,14 +933,43 @@ async function loadVersions(brandId, modelId, year) {
     // Mostrar mensaje de loading
     showLoadingStatus('Cargando versiones disponibles para el año seleccionado...');
     
-    // Cargar versiones filtradas por año
-    const versions = await fetchWithCache(`/brands/${brandId}/groups/${modelId}/models?year=${year}`);
-    populateSelect(document.getElementById('version'), versions, 'Seleccioná versión');
+    // Cargar TODAS las versiones del modelo (sin filtro de año)
+    const allVersions = await fetchWithCache(`/brands/${brandId}/groups/${modelId}/models`);
+    
+    // Filtrar versiones por rango de años (prices_from y prices_to)
+    const filteredVersions = allVersions.filter(version => {
+      // Debug: mostrar información de la versión
+      console.log(`🔍 Versión: ${version.description} - prices: ${version.prices}, from: ${version.prices_from}, to: ${version.prices_to}`);
+      
+      // Si no tiene precios definidos, no mostrar
+      if (!version.prices) {
+        console.log(`❌ ${version.description}: No tiene precios`);
+        return false;
+      }
+      
+      // Si tiene precios pero no tiene rango de años, no mostrar
+      if (version.prices && (!version.prices_from || !version.prices_to)) {
+        console.log(`❌ ${version.description}: Tiene precios pero no rango de años`);
+        return false;
+      }
+      
+      // Verificar si el año seleccionado está dentro del rango
+      const yearNum = parseInt(year);
+      const fromYear = parseInt(version.prices_from);
+      const toYear = parseInt(version.prices_to);
+      
+      const isInRange = yearNum >= fromYear && yearNum <= toYear;
+      console.log(`📊 ${version.description}: Año ${yearNum} en rango ${fromYear}-${toYear}? ${isInRange}`);
+      
+      return isInRange;
+    });
+    
+    populateSelect(document.getElementById('version'), filteredVersions, 'Seleccioná versión');
     
     // Ocultar mensaje de loading
     hideLoadingStatus();
     
-    console.log(`✅ Versiones cargadas desde Info Autos para modelo ${modelId} año ${year}:`, versions.length);
+    console.log(`✅ Versiones filtradas por año ${year}: ${filteredVersions.length} de ${allVersions.length} totales`);
   } catch (error) {
     hideLoadingStatus();
     showError(document.getElementById('version'), 'Error cargando versiones desde Info Autos');
