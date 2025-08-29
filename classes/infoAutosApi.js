@@ -393,7 +393,7 @@ class InfoAutosApi {
       const firstResponse = await this.makeRequest(`/brands/${brandId}/models/`, {
         query_mode: 'matching',
         page: 1,
-        page_size: 20 // Usar el máximo permitido por la API
+        page_size: 100 // ✅ USAR MÁXIMO PERMITIDO: 100 en lugar de 20
       }, true); // getHeaders = true para obtener los headers
       
       if (!firstResponse.data || !Array.isArray(firstResponse.data)) {
@@ -419,7 +419,7 @@ class InfoAutosApi {
       // Si hay más páginas, procesarlas UNA POR UNA para asegurar que se completen todas
       if (totalPages > 1) {
         console.log(`🚀 Procesando ${totalPages - 1} páginas restantes...`);
-        console.log(`📊 Páginas totales a procesar: ${totalPages}, modelos esperados: ~${totalPages * 20}`);
+        console.log(`📊 Páginas totales a procesar: ${totalPages}, modelos esperados: ~${totalPages * 100}`);
         
         // Procesar páginas una por una para asegurar que se completen todas
         for (let page = 2; page <= totalPages; page++) {
@@ -429,7 +429,7 @@ class InfoAutosApi {
             const pageModels = await this.makeRequest(`/brands/${brandId}/models/`, {
               query_mode: 'matching',
               page: page,
-              page_size: 20
+              page_size: 100 // ✅ USAR MÁXIMO PERMITIDO: 100 en lugar de 20
             });
             
             if (pageModels && Array.isArray(pageModels)) {
@@ -510,7 +510,7 @@ class InfoAutosApi {
       const firstResponse = await this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
         query_mode: 'matching',
         page: 1,
-        page_size: 20 // Usar el máximo permitido por la API
+        page_size: 100 // ✅ USAR MÁXIMO PERMITIDO: 100 en lugar de 20
       }, true); // getHeaders = true para obtener los headers
       
       if (!firstResponse.data || !Array.isArray(firstResponse.data)) {
@@ -536,7 +536,7 @@ class InfoAutosApi {
       // Si hay más páginas, procesarlas UNA POR UNA para asegurar que se completen todas
       if (totalPages > 1) {
         console.log(`🚀 Procesando ${totalPages - 1} páginas restantes de versiones...`);
-        console.log(`📊 Páginas totales a procesar: ${totalPages}, versiones esperadas: ~${totalPages * 20}`);
+        console.log(`📊 Páginas totales a procesar: ${totalPages}, versiones esperadas: ~${totalPages * 100}`);
         
         // Procesar páginas una por una para asegurar que se completen todas
         for (let page = 2; page <= totalPages; page++) {
@@ -546,7 +546,7 @@ class InfoAutosApi {
             const pageVersions = await this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
               query_mode: 'matching',
               page: page,
-              page_size: 20
+              page_size: 100 // ✅ USAR MÁXIMO PERMITIDO: 100 en lugar de 20
             });
             
             if (pageVersions && Array.isArray(pageVersions)) {
