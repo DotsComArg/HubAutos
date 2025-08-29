@@ -906,12 +906,29 @@ async function loadModels(brandId, year) {
       return isInRange;
     });
     
-    populateSelect(document.getElementById('model'), filteredModels, 'Seleccioná modelo');
+    // ✅ MOSTRAR TODOS LOS MODELOS FILTRADOS SIN AGRUPAR
+    // Crear array de modelos únicos basado en ID y nombre
+    const uniqueModels = [];
+    const seenModels = new Set();
+    
+    filteredModels.forEach(model => {
+      const modelKey = `${model.id}-${model.name}`;
+      if (!seenModels.has(modelKey)) {
+        seenModels.add(modelKey);
+        uniqueModels.push({
+          id: model.id,
+          name: model.name,
+          fullDescription: model.fullDescription || model.description || 'Modelo sin nombre'
+        });
+      }
+    });
+    
+    populateSelect(document.getElementById('model'), uniqueModels, 'Seleccioná modelo');
     
     // Ocultar mensaje de loading
     hideLoadingStatus();
     
-    console.log(`✅ Modelos filtrados por año ${year}: ${filteredModels.length} de ${allModels.length} totales`);
+    console.log(`✅ Modelos filtrados por año ${year}: ${uniqueModels.length} de ${allModels.length} totales`);
   } catch (error) {
     hideLoadingStatus();
     showError(document.getElementById('model'), 'Error cargando modelos desde Info Autos');
@@ -964,12 +981,29 @@ async function loadVersions(brandId, modelId, year) {
       return isInRange;
     });
     
-    populateSelect(document.getElementById('version'), filteredVersions, 'Seleccioná versión');
+    // ✅ MOSTRAR TODAS LAS VERSIONES FILTRADAS SIN AGRUPAR
+    // Crear array de versiones únicas basado en ID y nombre
+    const uniqueVersions = [];
+    const seenVersions = new Set();
+    
+    filteredVersions.forEach(version => {
+      const versionKey = `${version.id}-${version.name}`;
+      if (!seenVersions.has(versionKey)) {
+        seenVersions.add(versionKey);
+        uniqueVersions.push({
+          id: version.id,
+          name: version.name,
+          description: version.description || 'Versión sin nombre'
+        });
+      }
+    });
+    
+    populateSelect(document.getElementById('version'), uniqueVersions, 'Seleccioná versión');
     
     // Ocultar mensaje de loading
     hideLoadingStatus();
     
-    console.log(`✅ Versiones filtradas por año ${year}: ${filteredVersions.length} de ${allVersions.length} totales`);
+    console.log(`✅ Versiones filtradas por año ${year}: ${uniqueVersions.length} de ${allVersions.length} totales`);
   } catch (error) {
     hideLoadingStatus();
     showError(document.getElementById('version'), 'Error cargando versiones desde Info Autos');
@@ -1234,3 +1268,4 @@ form.addEventListener('input', function() {
 
 </body>
 </html>
+
