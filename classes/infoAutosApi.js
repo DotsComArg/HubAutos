@@ -416,62 +416,42 @@ class InfoAutosApi {
         }
       }
       
-      // Si hay más páginas, procesarlas en lotes para mejor performance
+      // Si hay más páginas, procesarlas UNA POR UNA para asegurar que se completen todas
       if (totalPages > 1) {
-        console.log(`🚀 Procesando ${totalPages - 1} páginas restantes en lotes...`);
+        console.log(`🚀 Procesando ${totalPages - 1} páginas restantes...`);
         console.log(`📊 Páginas totales a procesar: ${totalPages}, modelos esperados: ~${totalPages * 20}`);
         
-        // Procesar páginas en lotes de 5 para balancear velocidad y rate limiting
-        const batchSize = 5;
-        let processedPages = 1; // Ya procesamos la página 1
-        
-        for (let batchStart = 2; batchStart <= totalPages; batchStart += batchSize) {
-          const batchEnd = Math.min(batchStart + batchSize - 1, totalPages);
-          console.log(`📄 Procesando lote: páginas ${batchStart} a ${batchEnd} (${processedPages}/${totalPages} completadas)...`);
+        // Procesar páginas una por una para asegurar que se completen todas
+        for (let page = 2; page <= totalPages; page++) {
+          console.log(`📄 Procesando página ${page}/${totalPages}...`);
           
-          // Crear array de promesas para este lote
-          const batchPromises = [];
-          for (let page = batchStart; page <= batchEnd; page++) {
-            batchPromises.push(
-              this.makeRequest(`/brands/${brandId}/models/`, {
-                query_mode: 'matching',
-                page: page,
-                page_size: 20
-              })
-            );
-          }
-          
-          // Ejecutar todas las páginas del lote en paralelo
           try {
-            const batchResults = await Promise.all(batchPromises);
-            
-            // Agregar resultados al total
-            let modelsInThisBatch = 0;
-            batchResults.forEach((models, index) => {
-              if (models && Array.isArray(models)) {
-                allModels = allModels.concat(models);
-                modelsInThisBatch += models.length;
-                console.log(`✅ Página ${batchStart + index}: ${models.length} modelos`);
-              }
+            const pageModels = await this.makeRequest(`/brands/${brandId}/models/`, {
+              query_mode: 'matching',
+              page: page,
+              page_size: 20
             });
             
-            processedPages += (batchEnd - batchStart + 1);
-            console.log(`📊 Lote completado: ${modelsInThisBatch} modelos en este lote. Total acumulado: ${allModels.length} modelos`);
-            
-            // Delay reducido entre lotes (no entre páginas individuales)
-            if (batchEnd < totalPages) {
-              console.log(`⏳ Esperando 50ms antes del siguiente lote...`);
-              await new Promise(resolve => setTimeout(resolve, 50)); // Solo 50ms entre lotes
+            if (pageModels && Array.isArray(pageModels)) {
+              allModels = allModels.concat(pageModels);
+              console.log(`✅ Página ${page}: ${pageModels.length} modelos. Total acumulado: ${allModels.length} modelos`);
+            } else {
+              console.log(`⚠️ Página ${page}: respuesta no válida`);
             }
             
-          } catch (batchError) {
-            console.error(`❌ Error en lote ${batchStart}-${batchEnd}:`, batchError);
-            console.log(`⚠️ Continuando con el siguiente lote...`);
-            // Continuar con el siguiente lote en lugar de fallar completamente
+            // Delay mínimo entre páginas para respetar rate limiting
+            if (page < totalPages) {
+              await new Promise(resolve => setTimeout(resolve, 30)); // Solo 30ms entre páginas
+            }
+            
+          } catch (pageError) {
+            console.error(`❌ Error en página ${page}:`, pageError);
+            console.log(`⚠️ Continuando con la siguiente página...`);
+            // Continuar con la siguiente página en lugar de fallar completamente
           }
         }
         
-        console.log(`🎯 Procesamiento de lotes completado. Páginas procesadas: ${processedPages}/${totalPages}`);
+        console.log(`🎯 Procesamiento de páginas completado. Total de modelos: ${allModels.length}`);
       }
 
       console.log(`📊 Total de modelos obtenidos para marca ${brandId}: ${allModels.length}`);
@@ -553,62 +533,42 @@ class InfoAutosApi {
         }
       }
       
-      // Si hay más páginas, procesarlas en lotes para mejor performance
+      // Si hay más páginas, procesarlas UNA POR UNA para asegurar que se completen todas
       if (totalPages > 1) {
-        console.log(`🚀 Procesando ${totalPages - 1} páginas restantes de versiones en lotes...`);
+        console.log(`🚀 Procesando ${totalPages - 1} páginas restantes de versiones...`);
         console.log(`📊 Páginas totales a procesar: ${totalPages}, versiones esperadas: ~${totalPages * 20}`);
         
-        // Procesar páginas en lotes de 5 para balancear velocidad y rate limiting
-        const batchSize = 5;
-        let processedPages = 1; // Ya procesamos la página 1
-        
-        for (let batchStart = 2; batchStart <= totalPages; batchStart += batchSize) {
-          const batchEnd = Math.min(batchStart + batchSize - 1, totalPages);
-          console.log(`📄 Procesando lote de versiones: páginas ${batchStart} a ${batchEnd} (${processedPages}/${totalPages} completadas)...`);
+        // Procesar páginas una por una para asegurar que se completen todas
+        for (let page = 2; page <= totalPages; page++) {
+          console.log(`📄 Procesando página ${page}/${totalPages} de versiones...`);
           
-          // Crear array de promesas para este lote
-          const batchPromises = [];
-          for (let page = batchStart; page <= batchEnd; page++) {
-            batchPromises.push(
-              this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
-                query_mode: 'matching',
-                page: page,
-                page_size: 20
-              })
-            );
-          }
-          
-          // Ejecutar todas las páginas del lote en paralelo
           try {
-            const batchResults = await Promise.all(batchPromises);
-            
-            // Agregar resultados al total
-            let versionsInThisBatch = 0;
-            batchResults.forEach((versions, index) => {
-              if (versions && Array.isArray(versions)) {
-                allVersions = allVersions.concat(versions);
-                versionsInThisBatch += versions.length;
-                console.log(`✅ Página ${batchStart + index} de versiones: ${versions.length} versiones`);
-              }
+            const pageVersions = await this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
+              query_mode: 'matching',
+              page: page,
+              page_size: 20
             });
             
-            processedPages += (batchEnd - batchStart + 1);
-            console.log(`📊 Lote de versiones completado: ${versionsInThisBatch} versiones en este lote. Total acumulado: ${allVersions.length} versiones`);
-            
-            // Delay reducido entre lotes (no entre páginas individuales)
-            if (batchEnd < totalPages) {
-              console.log(`⏳ Esperando 50ms antes del siguiente lote de versiones...`);
-              await new Promise(resolve => setTimeout(resolve, 50)); // Solo 50ms entre lotes
+            if (pageVersions && Array.isArray(pageVersions)) {
+              allVersions = allVersions.concat(pageVersions);
+              console.log(`✅ Página ${page} de versiones: ${pageVersions.length} versiones. Total acumulado: ${allVersions.length} versiones`);
+            } else {
+              console.log(`⚠️ Página ${page} de versiones: respuesta no válida`);
             }
             
-          } catch (batchError) {
-            console.error(`❌ Error en lote de versiones ${batchStart}-${batchEnd}:`, batchError);
-            console.log(`⚠️ Continuando con el siguiente lote de versiones...`);
-            // Continuar con el siguiente lote en lugar de fallar completamente
+            // Delay mínimo entre páginas para respetar rate limiting
+            if (page < totalPages) {
+              await new Promise(resolve => setTimeout(resolve, 30)); // Solo 30ms entre páginas
+            }
+            
+          } catch (pageError) {
+            console.error(`❌ Error en página ${page} de versiones:`, pageError);
+            console.log(`⚠️ Continuando con la siguiente página de versiones...`);
+            // Continuar con la siguiente página en lugar de fallar completamente
           }
         }
         
-        console.log(`🎯 Procesamiento de lotes de versiones completado. Páginas procesadas: ${processedPages}/${totalPages}`);
+        console.log(`🎯 Procesamiento de páginas de versiones completado. Total de versiones: ${allVersions.length}`);
       }
 
       console.log(`📊 Total de versiones obtenidas para grupo ${modelId}: ${allVersions.length}`);
