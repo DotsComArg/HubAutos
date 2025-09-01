@@ -117,15 +117,63 @@ router.get('/brands/:brandId/models', async (req, res) => {
     // Obtener TODOS los modelos de la marca
     const allModels = await vehicleService.getAllModelsForBrand(brandId);
     
-    // Filtrar modelos por año (price_from <= year <= price_to)
+    console.log(`📊 Total de modelos obtenidos para marca ${brandId}: ${allModels.length}`);
+    
+    // Filtrar modelos por año usando múltiples criterios
     const filteredModels = allModels.filter(model => {
+      // Criterio 1: Verificar si tiene rango de precios que incluya el año
       if (model.prices_from && model.prices_to) {
-        return model.prices_from <= parseInt(year) && parseInt(year) <= model.prices_to;
+        const yearInt = parseInt(year);
+        const fromYear = parseInt(model.prices_from);
+        const toYear = parseInt(model.prices_to);
+        
+        if (yearInt >= fromYear && yearInt <= toYear) {
+          console.log(`✅ Modelo ${model.name} incluido por rango de precios: ${fromYear}-${toYear}`);
+          return true;
+        }
       }
-      return false; // Si no tiene rango de precios, no mostrar
+      
+      // Criterio 2: Verificar si la descripción menciona el año
+      if (model.description && model.description.includes(year.toString())) {
+        console.log(`✅ Modelo ${model.name} incluido por descripción que menciona ${year}`);
+        return true;
+      }
+      
+      // Criterio 3: Si no tiene información de precios pero tiene otras características
+      if (!model.prices_from && !model.prices_to && model.prices === true) {
+        console.log(`⚠️ Modelo ${model.name} sin rango específico pero tiene precios`);
+        return true;
+      }
+      
+      console.log(`❌ Modelo ${model.name} excluido - no cumple criterios para año ${year}`);
+      return false;
     });
     
     console.log(`✅ Modelos filtrados: ${filteredModels.length} de ${allModels.length} totales para año ${year}`);
+    
+    // Si no hay modelos filtrados, intentar con una consulta directa usando price_at
+    if (filteredModels.length === 0) {
+      console.log(`🔄 No se encontraron modelos con filtrado local, intentando consulta directa con price_at=${year}...`);
+      
+      try {
+        const directModels = await vehicleService.getModelsDirectWithPriceAt(brandId, year);
+        if (directModels && directModels.length > 0) {
+          console.log(`✅ Consulta directa exitosa: ${directModels.length} modelos encontrados`);
+          return res.json({
+            success: true,
+            data: directModels,
+            source: 'infoautos',
+            brandId: brandId,
+            year: year,
+            totalModels: allModels.length,
+            filteredModels: directModels.length,
+            method: 'direct_query'
+          });
+        }
+      } catch (directError) {
+        console.log(`⚠️ Consulta directa falló:`, directError.message);
+      }
+    }
     
     res.json({
       success: true,
@@ -134,7 +182,8 @@ router.get('/brands/:brandId/models', async (req, res) => {
       brandId: brandId,
       year: year,
       totalModels: allModels.length,
-      filteredModels: filteredModels.length
+      filteredModels: filteredModels.length,
+      method: 'local_filter'
     });
   } catch (error) {
     console.error(`❌ Error obteniendo modelos para marca ${req.params.brandId}:`, error);

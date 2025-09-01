@@ -527,6 +527,7 @@ class InfoAutosApi {
         const groupId = model.group?.id || '0';
         
         if (!groupedModels.has(groupKey)) {
+          // Crear el modelo base con información del primer modelo del grupo
           groupedModels.set(groupKey, {
             id: groupId,
             name: groupKey,
@@ -547,8 +548,26 @@ class InfoAutosApi {
             position: model.position,
             r_codia: model.r_codia,
             summary: model.summary,
-            similarity: model.similarity
+            similarity: model.similarity,
+            // ✅ AGREGAR ARRAYS PARA ACUMULAR INFORMACIÓN DE TODOS LOS MODELOS DEL GRUPO
+            all_prices_from: [model.prices_from],
+            all_prices_to: [model.prices_to],
+            all_descriptions: [model.description]
           });
+        } else {
+          // Acumular información de años de otros modelos del mismo grupo
+          const existingModel = groupedModels.get(groupKey);
+          if (model.prices_from) existingModel.all_prices_from.push(model.prices_from);
+          if (model.prices_to) existingModel.all_prices_to.push(model.prices_to);
+          if (model.description) existingModel.all_descriptions.push(model.description);
+          
+          // Actualizar el rango de precios para incluir todos los años del grupo
+          if (model.prices_from && (!existingModel.prices_from || model.prices_from < existingModel.prices_from)) {
+            existingModel.prices_from = model.prices_from;
+          }
+          if (model.prices_to && (!existingModel.prices_to || model.prices_to > existingModel.prices_to)) {
+            existingModel.prices_to = model.prices_to;
+          }
         }
       });
 

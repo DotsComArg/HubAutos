@@ -614,8 +614,8 @@
 // URL del backend existente (Vercel)
 const BACKEND_URL = "https://hubsautos.dotscomagency.com/api/auto-quote";
 
-// URL del servicio de datos de vehículos (Vercel) - PRINCIPAL
-const VEHICLE_DATA_API_URL = "https://hubsautos.dotscomagency.com/api/vehicles";
+// URL del servicio de datos de vehículos (tu backend en Vercel)
+const VEHICLE_DATA_API_URL = "https://hubsautos.dotscomagency.com";
 
 // ===========================================
 // INICIALIZACIÓN DEL FORMULARIO
@@ -645,7 +645,7 @@ async function fetchWithCache(endpoint) {
 
   try {
     const fullUrl = `${VEHICLE_DATA_API_URL}${endpoint}`;
-    console.log(`🌐 Llamando al servicio de datos de vehículos: ${fullUrl}`);
+    console.log(`🌐 Llamando a tu backend de datos de vehículos: ${fullUrl}`);
     
     const response = await fetch(fullUrl, {
       method: 'GET',
@@ -680,6 +680,26 @@ async function fetchWithCache(endpoint) {
   }
 }
 
+// Función para obtener datos de tu backend (sin paginación)
+async function fetchData(endpoint) {
+  try {
+    console.log(`📄 Obteniendo datos de ${endpoint}`);
+    
+    const data = await fetchWithCache(endpoint);
+    
+    if (data && Array.isArray(data)) {
+      console.log(`✅ Datos obtenidos: ${data.length} elementos`);
+      return data;
+    } else {
+      console.log(`⚠️ No hay datos o formato inesperado`);
+      return [];
+    }
+    
+  } catch (error) {
+    console.error(`❌ Error obteniendo datos de ${endpoint}:`, error);
+    throw error;
+  }
+}
 
 
 // Función para poblar un select
@@ -826,11 +846,20 @@ function hideLoadingStatus() {
 async function loadYears() {
   try {
     showLoading(document.getElementById('year'), 'Cargando años...');
-    const years = await fetchWithCache('/years');
-    populateSelect(document.getElementById('year'), years, 'Seleccioná año');
-    console.log('✅ Años cargados desde Info Autos:', years.length);
+    
+    // Usar el endpoint correcto para obtener años disponibles
+    const yearsData = await fetchWithCache('/api/vehicles/years');
+    
+    if (yearsData && Array.isArray(yearsData)) {
+      // Los años ya vienen ordenados del backend
+      populateSelect(document.getElementById('year'), yearsData, 'Seleccioná año');
+      console.log('✅ Años cargados desde tu backend:', yearsData.length);
+    } else {
+      showError(document.getElementById('year'), 'No se pudieron cargar los años');
+      console.error('No se encontraron años en los datos');
+    }
   } catch (error) {
-    showError(document.getElementById('year'), 'Error cargando años desde Info Autos');
+    showError(document.getElementById('year'), 'Error cargando años desde InfoAutos');
     console.error('Error cargando años:', error);
   }
 }
@@ -845,17 +874,27 @@ async function loadBrands() {
     // Mostrar mensaje de loading
     showLoadingStatus('Cargando todas las marcas disponibles...');
     
-    // Cargar TODAS las marcas disponibles (sin filtrar por año)
-    const brands = await fetchWithCache('/brands');
-    populateSelect(document.getElementById('brand'), brands, 'Seleccioná marca');
+    // Usar el endpoint correcto para obtener todas las marcas
+    const brands = await fetchData('/api/vehicles/brands');
     
-    // Ocultar mensaje de loading
-    hideLoadingStatus();
-    
-    console.log(`✅ Todas las marcas cargadas desde Info Autos:`, brands.length);
+    if (brands && brands.length > 0) {
+      // Las marcas ya vienen filtradas del backend
+      populateSelect(document.getElementById('brand'), brands.map(brand => ({
+        id: brand.id,
+        name: brand.name
+      })), 'Seleccioná marca');
+      
+      // Ocultar mensaje de loading
+      hideLoadingStatus();
+      
+      console.log(`✅ Marcas cargadas desde tu backend: ${brands.length}`);
+    } else {
+      hideLoadingStatus();
+      showError(document.getElementById('brand'), 'No se pudieron cargar las marcas');
+    }
   } catch (error) {
     hideLoadingStatus();
-    showError(document.getElementById('brand'), 'Error cargando marcas desde Info Autos');
+    resetSelect(document.getElementById('brand'), 'Error cargando marcas');
     console.error('Error cargando marcas:', error);
   }
 }
@@ -875,64 +914,30 @@ async function loadModels(brandId, year) {
     // Mostrar mensaje de loading
     showLoadingStatus('Cargando modelos disponibles para el año seleccionado...');
     
-    // ✅ USAR ENDPOINT CORRECTO DEL BACKEND CON PAGINACIÓN
-    // Cargar TODOS los modelos de la marca usando el endpoint que SÍ existe en el backend
-    const allModels = await fetchWithCache(`/brands/${brandId}/models`);
+    // Usar el endpoint correcto para obtener modelos por marca filtrados por año
+    const allModels = await fetchData(`/api/vehicles/brands/${brandId}/models?year=${year}`);
     
-    // Filtrar modelos por rango de años (prices_from y prices_to)
-    const filteredModels = allModels.filter(model => {
-      // Debug: mostrar información del modelo
-      console.log(`🔍 Modelo: ${model.name} - prices: ${model.prices}, from: ${model.prices_from}, to: ${model.prices_to}`);
+    if (allModels && allModels.length > 0) {
+      // Los modelos ya vienen filtrados del backend
+      populateSelect(document.getElementById('model'), allModels.map(model => ({
+        id: model.id,
+        name: model.name,
+        fullDescription: model.description || model.name
+      })), 'Seleccioná modelo');
       
-      // Si no tiene precios definidos, no mostrar
-      if (!model.prices) {
-        console.log(`❌ ${model.name}: No tiene precios`);
-        return false;
-      }
+      // Ocultar mensaje de loading
+      hideLoadingStatus();
       
-      // Si tiene precios pero no tiene rango de años, no mostrar
-      if (model.prices && (!model.prices_from || !model.prices_to)) {
-        console.log(`❌ ${model.name}: Tiene precios pero no rango de años`);
-        return false;
-      }
-      
-      // Verificar si el año seleccionado está dentro del rango
-      const yearNum = parseInt(year);
-      const fromYear = parseInt(model.prices_from);
-      const toYear = parseInt(model.prices_to);
-      
-      const isInRange = yearNum >= fromYear && yearNum <= toYear;
-      console.log(`📊 ${model.name}: Año ${yearNum} en rango ${fromYear}-${toYear}? ${isInRange}`);
-      
-      return isInRange;
-    });
-    
-    // ✅ MOSTRAR TODOS LOS MODELOS FILTRADOS SIN AGRUPAR
-    // Crear array de modelos únicos basado en ID y nombre
-    const uniqueModels = [];
-    const seenModels = new Set();
-    
-    filteredModels.forEach(model => {
-      const modelKey = `${model.id}-${model.name}`;
-      if (!seenModels.has(modelKey)) {
-        seenModels.add(modelKey);
-        uniqueModels.push({
-          id: model.id,
-          name: model.name,
-          fullDescription: model.fullDescription || model.description || 'Modelo sin nombre'
-        });
-      }
-    });
-    
-    populateSelect(document.getElementById('model'), uniqueModels, 'Seleccioná modelo');
-    
-    // Ocultar mensaje de loading
-    hideLoadingStatus();
-    
-    console.log(`✅ Modelos filtrados por año ${year}: ${uniqueModels.length} de ${allModels.length} totales`);
+      console.log(`✅ Modelos cargados desde tu backend: ${allModels.length}`);
+    } else {
+      hideLoadingStatus();
+      // Manejar caso cuando no hay modelos para el año seleccionado
+      resetSelect(document.getElementById('model'), `No hay modelos disponibles para ${year}`);
+      console.log(`⚠️ No se encontraron modelos para marca ${brandId} y año ${year}`);
+    }
   } catch (error) {
     hideLoadingStatus();
-    showError(document.getElementById('model'), 'Error cargando modelos desde Info Autos');
+    resetSelect(document.getElementById('model'), 'Error cargando modelos');
     console.error('Error cargando modelos:', error);
   }
 }
@@ -951,64 +956,30 @@ async function loadVersions(brandId, modelId, year) {
     // Mostrar mensaje de loading
     showLoadingStatus('Cargando versiones disponibles para el año seleccionado...');
     
-    // ✅ USAR ENDPOINT CORRECTO DEL BACKEND CON PAGINACIÓN
-    // Cargar TODAS las versiones del modelo usando el endpoint que SÍ existe en el backend
-    const allVersions = await fetchWithCache(`/brands/${brandId}/groups/${modelId}/models`);
+    // Usar el endpoint correcto para obtener versiones por modelo filtradas por año
+    const allVersions = await fetchData(`/api/vehicles/brands/${brandId}/groups/${modelId}/models?year=${year}`);
     
-    // Filtrar versiones por rango de años (prices_from y prices_to)
-    const filteredVersions = allVersions.filter(version => {
-      // Debug: mostrar información de la versión
-      console.log(`🔍 Versión: ${version.description} - prices: ${version.prices}, from: ${version.prices_from}, to: ${version.prices_to}`);
+        if (allVersions && allVersions.length > 0) {
+      // Las versiones ya vienen filtradas del backend
+      populateSelect(document.getElementById('version'), allVersions.map(version => ({
+        id: version.id,
+        name: version.name,
+        description: version.description || version.name
+      })), 'Seleccioná versión');
       
-      // Si no tiene precios definidos, no mostrar
-      if (!version.prices) {
-        console.log(`❌ ${version.description}: No tiene precios`);
-        return false;
-      }
+      // Ocultar mensaje de loading
+      hideLoadingStatus();
       
-      // Si tiene precios pero no tiene rango de años, no mostrar
-      if (version.prices && (!version.prices_from || !version.prices_to)) {
-        console.log(`❌ ${version.description}: Tiene precios pero no rango de años`);
-        return false;
-      }
-      
-      // Verificar si el año seleccionado está dentro del rango
-      const yearNum = parseInt(year);
-      const fromYear = parseInt(version.prices_from);
-      const toYear = parseInt(version.prices_to);
-      
-      const isInRange = yearNum >= fromYear && yearNum <= toYear;
-      console.log(`📊 ${version.description}: Año ${yearNum} en rango ${fromYear}-${toYear}? ${isInRange}`);
-      
-      return isInRange;
-    });
-    
-    // ✅ MOSTRAR TODAS LAS VERSIONES FILTRADAS SIN AGRUPAR
-    // Crear array de versiones únicas basado en ID y nombre
-    const uniqueVersions = [];
-    const seenVersions = new Set();
-    
-    filteredVersions.forEach(version => {
-      const versionKey = `${version.id}-${version.name}`;
-      if (!seenVersions.has(versionKey)) {
-        seenVersions.add(versionKey);
-        uniqueVersions.push({
-          id: version.id,
-          name: version.name,
-          description: version.description || 'Versión sin nombre'
-        });
-      }
-    });
-    
-    populateSelect(document.getElementById('version'), uniqueVersions, 'Seleccioná versión');
-    
-    // Ocultar mensaje de loading
-    hideLoadingStatus();
-    
-    console.log(`✅ Versiones filtradas por año ${year}: ${uniqueVersions.length} de ${allVersions.length} totales`);
+      console.log(`✅ Versiones cargadas desde tu backend: ${allVersions.length}`);
+    } else {
+      hideLoadingStatus();
+      // Manejar caso cuando no hay versiones para el año seleccionado
+      resetSelect(document.getElementById('version'), `No hay versiones disponibles para ${year}`);
+      console.log(`⚠️ No se encontraron versiones para modelo ${modelId} y año ${year}`);
+    }
   } catch (error) {
     hideLoadingStatus();
-    showError(document.getElementById('version'), 'Error cargando versiones desde Info Autos');
+    resetSelect(document.getElementById('version'), 'Error cargando versiones');
     console.error('Error cargando versiones:', error);
   }
 }
