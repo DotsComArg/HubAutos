@@ -1,13 +1,12 @@
 // api/cheapest-car.js
 //
 //  ➜   GET /api/cheapest-car?q=toyota corolla 100000 km&year=2024&limit=1
-//  ➜   Requiere:  npm i puppeteer-core @sparticuz/chromium-min
+//  ➜   Requiere:  npm i puppeteer-core
 // ------------------------------------------------------------------------
 
 const dotenv    = require('dotenv');
 dotenv.config();
 
-const chromium  = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
 let url = '';
 
@@ -30,11 +29,23 @@ async function getCheapestCar(query, year, limit = 1) {
     if (!query) return { error: 'Parametro query requerido' };
 
     /* 2. Lanzar Chromium ------------------------------------------------ */
+    // Configuración para Vercel/Serverless
     const browser = await puppeteer.launch({
-      args: [...chromium.args, `--user-agent=${pickUA()}`],
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--single-process',
+        '--disable-extensions',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        `--user-agent=${pickUA()}`
+      ]
     });
 
     const page = await browser.newPage();
