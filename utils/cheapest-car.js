@@ -41,16 +41,22 @@ function extractVehiclesFromHTML(html, limit = 1) {
       return m ? +m[0].replace(/\./g, '') : null;
     };
 
-    // Buscar todos los wrappers de resultados
-    const wrapperRegex = /<div[^>]*class="[^"]*ui-search-result__wrapper[^"]*"[^>]*>(.*?)<\/div>/gs;
-    const wrappers = html.match(wrapperRegex) || [];
+    // Buscar li.ui-search-layout__item primero (como el código viejo)
+    const layoutItemRegex = /<li[^>]*class="[^"]*ui-search-layout__item[^"]*"[^>]*>(.*?)<\/li>/gs;
+    const layoutItems = html.match(layoutItemRegex) || [];
     
-    console.log(`📊 Encontrados ${wrappers.length} wrappers en el HTML`);
+    console.log(`📊 Encontrados ${layoutItems.length} layout items en el HTML`);
     
-    for (let i = 0; i < Math.min(wrappers.length, limit * 2); i++) {
-      const wrapper = wrappers[i];
+    for (let i = 0; i < Math.min(layoutItems.length, limit * 2); i++) {
+      const layoutItem = layoutItems[i];
       
       try {
+        // Buscar div.ui-search-result__wrapper dentro del layout item
+        const wrapperMatch = layoutItem.match(/<div[^>]*class="[^"]*ui-search-result__wrapper[^"]*"[^>]*>(.*?)<\/div>/s);
+        if (!wrapperMatch) continue;
+        
+        const wrapper = wrapperMatch[1];
+        
         // Buscar poly-card dentro del wrapper
         const cardMatch = wrapper.match(/<div[^>]*class="[^"]*poly-card[^"]*"[^>]*>(.*?)<\/div>/s);
         if (!cardMatch) continue;
@@ -106,7 +112,7 @@ function extractVehiclesFromHTML(html, limit = 1) {
           });
         }
       } catch (error) {
-        console.log(`Error procesando wrapper ${i}:`, error.message);
+        console.log(`Error procesando layout item ${i}:`, error.message);
       }
     }
   } catch (error) {
