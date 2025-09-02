@@ -22,6 +22,20 @@ function getRandomUserAgent() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
+/* ----------  Build correct MercadoLibre URL  ---------- */
+function buildMercadoLibreURL(query, year) {
+  // Limpiar y formatear la query
+  const cleanQuery = query
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  
+  // Construir URL en el formato correcto de MercadoLibre autos
+  return `https://autos.mercadolibre.com.ar/${year}/${cleanQuery}_OrderId_PRICE_NoIndex_True`;
+}
+
 /* ----------  Extract data from HTML  ---------- */
 function extractVehiclesFromHTML(html, limit = 1) {
   const vehicles = [];
@@ -76,9 +90,8 @@ async function scrapeMercadoLibre(query, year, limit = 1) {
   try {
     console.log(`🔍 Iniciando búsqueda: ${query} ${year}`);
     
-    // Construir URL de búsqueda
-    const searchQuery = encodeURIComponent(`${query} ${year}`);
-    url = `https://www.mercadolibre.com.ar/c/autos-motos-y-otros#menu=categories&search=${searchQuery}`;
+    // Construir URL correcta de MercadoLibre autos
+    url = buildMercadoLibreURL(query, year);
     
     console.log(`🌐 Navegando a: ${url}`);
     
