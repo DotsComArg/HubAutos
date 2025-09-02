@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sparticuz/chromium-min": "^138.0.2",
     "axios": "^1.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -22,6 +23,7 @@
     "mongodb": "^6.16.0",
     "mongoose": "^8.17.1",
     "nanoid": "^3.3.11",
+    "puppeteer-core": "^24.18.0",
     "xlsx": "^0.18.5"
   }
 }
