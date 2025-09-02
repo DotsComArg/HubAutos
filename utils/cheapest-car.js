@@ -104,36 +104,40 @@ async function getCheapestCar(query, year, limit = 1) {
       console.log('⚠️ No se encontraron resultados, intentando continuar...');
     }
 
-    /* --- NUEVO BLOQUE evaluate: ajustado para poly-card ----------------- */
+    /* --- NUEVO BLOQUE evaluate: corregido con selectores reales ---------- */
     const items = await page.evaluate(() => {
       const toNumber = txt => {
         const m = (txt || '').match(/\d[\d.]*/);
         return m ? +m[0].replace(/\./g, '') : null;
       };
-      return Array.from(document.querySelectorAll('div.ui-search-result__wrapper'))
-        .map(wrapper => {
-          const card = wrapper.querySelector('.poly-card');
-          if (!card) return null;
+      return Array.from(document.querySelectorAll('li.ui-search-layout__item'))
+        .map(item => {
           // Título y link
-          const titleAnchor = card.querySelector('a.poly-component__title');
+          const titleAnchor = item.querySelector('a.poly-component__title');
           const title = titleAnchor?.innerText.trim() || '';
           const link = titleAnchor?.href || '';
+          
           // Imagen
-          const img = card.querySelector('img.poly-component__picture');
+          const img = item.querySelector('img.poly-component__picture');
           const image = img?.src || '';
+          
           // Precio y moneda
-          const priceFraction = card.querySelector('.andes-money-amount__fraction')?.innerText.trim() || '';
-          const currency = card.querySelector('.andes-money-amount__currency-symbol')?.innerText.trim() || '';
+          const priceFraction = item.querySelector('.andes-money-amount__fraction')?.innerText.trim() || '';
+          const currency = item.querySelector('.andes-money-amount__currency-symbol')?.innerText.trim() || '';
           const price = toNumber(priceFraction);
+          
           // Año y km
-          const attrs = card.querySelectorAll('.poly-attributes_list__item');
+          const attrs = item.querySelectorAll('.poly-attributes_list__item');
           let year = '', km = '';
           if (attrs.length > 0) year = attrs[0].innerText.trim();
           if (attrs.length > 1) km = attrs[1].innerText.trim();
+          
           // Ubicación
-          const location = card.querySelector('.poly-component__location')?.innerText.trim() || '';
+          const location = item.querySelector('.poly-component__location')?.innerText.trim() || '';
+          
           // Validado
-          const validated = !!card.querySelector('.poly-pill__pill');
+          const validated = !!item.querySelector('.poly-pill__pill');
+          
           return { title, link, image, price, currency, year, km, location, validated };
         })
         .filter(i => i && i.price);
