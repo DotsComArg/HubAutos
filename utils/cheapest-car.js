@@ -79,7 +79,14 @@ async function getCheapestCar(query, year, limit = 1) {
 
     /* 4. Scraping ------------------------------------------------------- */
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await page.waitForSelector('li.ui-search-layout__item', { timeout: 10000 });
+    
+    // Esperar por elementos específicos con timeout más corto
+    try {
+      await page.waitForSelector('li.ui-search-layout__item', { timeout: 10000 });
+      console.log('✅ Encontrado li.ui-search-layout__item');
+    } catch (e) {
+      console.log('⚠️ No se encontró li.ui-search-layout__item, intentando continuar...');
+    }
 
     /* --- NUEVO BLOQUE evaluate: ajustado para poly-card ----------------- */
     const items = await page.evaluate(() => {
