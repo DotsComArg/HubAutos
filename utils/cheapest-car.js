@@ -22,18 +22,21 @@ function getRandomUserAgent() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-/* ----------  Build correct MercadoLibre URL  ---------- */
-function buildMercadoLibreURL(query, year) {
-  // Limpiar y formatear la query
-  const cleanQuery = query
+/* ----------  Build simple search URL  ---------- */
+function buildSearchURL(query, year) {
+  // Simplificar la query para búsqueda más amplia
+  const simpleQuery = query
+    .split(' ')
+    .slice(0, 3) // Tomar solo las primeras 3 palabras
+    .join(' ')
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
   
-  // Construir URL en el formato correcto de MercadoLibre autos
-  return `https://autos.mercadolibre.com.ar/${year}/${cleanQuery}_OrderId_PRICE_NoIndex_True`;
+  // Usar URL de búsqueda simple
+  return `https://autos.mercadolibre.com.ar/${year}/${simpleQuery}`;
 }
 
 /* ----------  Extract data from HTML  ---------- */
@@ -41,24 +44,65 @@ function extractVehiclesFromHTML(html, limit = 1) {
   const vehicles = [];
   
   try {
-    // Buscar artículos de vehículos usando regex
-    const articleRegex = /<article[^>]*>.*?<\/article>/gs;
-    const articles = html.match(articleRegex) || [];
+    // Buscar diferentes patrones de artículos
+    const patterns = [
+      /<article[^>]*>.*?<\/article>/gs,
+      /<div[^>]*class="[^"]*ui-search-result[^"]*"[^>]*>.*?<\/div>/gs,
+      /<li[^>]*class="[^"]*ui-search-layout__item[^"]*"[^>]*>.*?<\/li>/gs
+    ];
+    
+    let articles = [];
+    for (const pattern of patterns) {
+      const matches = html.match(pattern);
+      if (matches && matches.length > 0) {
+        articles = matches;
+        break;
+      }
+    }
+    
+    console.log(`📊 Encontrados ${articles.length} artículos en el HTML`);
     
     for (let i = 0; i < Math.min(articles.length, limit); i++) {
       const article = articles[i];
       
       try {
-        // Extraer título
-        const titleMatch = article.match(/<h2[^>]*>.*?<a[^>]*>([^<]+)<\/a>/);
-        const title = titleMatch ? titleMatch[1].trim() : '';
+        // Extraer título - múltiples patrones
+        const titlePatterns = [
+          /<h2[^>]*>.*?<a[^>]*>([^<]+)<\/a>/,
+          /<h3[^>]*>([^<]+)<\/h3>/,
+          /class="[^"]*title[^"]*"[^>]*>([^<]+)</,
+          /data-testid="[^"]*title[^"]*"[^>]*>([^<]+)</
+        ];
         
-        // Extraer precio
-        const priceMatch = article.match(/data-testid="price"[^>]*>.*?<span[^>]*>([^<]+)<\/span>/);
-        const price = priceMatch ? priceMatch[1].trim() : '';
+        let title = '';
+        for (const pattern of titlePatterns) {
+          const match = article.match(pattern);
+          if (match) {
+            title = match[1].trim();
+            break;
+          }
+        }
+        
+        // Extraer precio - múltiples patrones
+        const pricePatterns = [
+          /data-testid="price"[^>]*>.*?<span[^>]*>([^<]+)<\/span>/,
+          /class="[^"]*price[^"]*"[^>]*>([^<]+)</,
+          /<span[^>]*class="[^"]*andes-money-amount[^"]*"[^>]*>([^<]+)</,
+          /<span[^>]*class="[^"]*price[^"]*"[^>]*>([^<]+)</
+        ];
+        
+        let price = '';
+        for (const pattern of pricePatterns) {
+          const match = article.match(pattern);
+          if (match) {
+            price = match[1].trim();
+            break;
+          }
+        }
         
         // Extraer ubicación
-        const locationMatch = article.match(/data-testid="location"[^>]*>([^<]+)</);
+        const locationMatch = article.match(/data-testid="location"[^>]*>([^<]+)</) ||
+                             article.match(/class="[^"]*location[^"]*"[^>]*>([^<]+)</);
         const location = locationMatch ? locationMatch[1].trim() : '';
         
         // Extraer link
@@ -90,8 +134,8 @@ async function scrapeMercadoLibre(query, year, limit = 1) {
   try {
     console.log(`🔍 Iniciando búsqueda: ${query} ${year}`);
     
-    // Construir URL correcta de MercadoLibre autos
-    url = buildMercadoLibreURL(query, year);
+    // Construir URL de búsqueda simplificada
+    url = buildSearchURL(query, year);
     
     console.log(`🌐 Navegando a: ${url}`);
     
@@ -103,7 +147,8 @@ async function scrapeMercadoLibre(query, year, limit = 1) {
       'Accept-Encoding': 'gzip, deflate',
       'Connection': 'keep-alive',
       'Upgrade-Insecure-Requests': '1',
-      'Cache-Control': 'max-age=0'
+      'Cache-Control': 'max-age=0',
+      'Referer': 'https://www.mercadolibre.com.ar/'
     };
     
     // Hacer request HTTP
@@ -114,6 +159,7 @@ async function scrapeMercadoLibre(query, year, limit = 1) {
     });
     
     console.log(`✅ Respuesta recibida, status: ${response.status}`);
+    console.log(`📄 Tamaño del HTML: ${response.data.length} caracteres`);
     
     // Extraer datos del HTML
     const vehicles = extractVehiclesFromHTML(response.data, limit);
