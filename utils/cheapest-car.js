@@ -97,88 +97,28 @@ async function getCheapestCar(query, year, limit = 1) {
     /* 4. Scraping ------------------------------------------------------- */
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
     
+    // Esperar un poco para que se cargue todo el contenido
+    await page.waitForTimeout(3000);
+    
     // Verificar si estamos en página de login/cookies
     const pageContent = await page.evaluate(() => document.body.innerText);
     console.log('📄 Contenido de la página:', pageContent.substring(0, 200));
     
-    if (pageContent.includes('Aceptar cookies') || pageContent.includes('ingresa a tu cuenta')) {
-      console.log('⚠️ Detectada página de login/cookies, intentando aceptar cookies...');
-      try {
-        // Intentar diferentes selectores para aceptar cookies
-        const cookieSelectors = [
-          'button:contains("Aceptar cookies")',
-          'button:contains("Accept")',
-          '[data-testid="cookie-banner-accept"]',
-          '.cookie-banner-accept',
-          'button[aria-label*="cookies"]',
-          // Selectores más específicos para MercadoLibre
-          'button[data-testid="cookie-banner-accept"]',
-          'button[data-testid="cookie-accept"]',
-          'button[aria-label="Aceptar cookies"]',
-          'button[aria-label="Accept cookies"]',
-          // Buscar por texto exacto
-          'button:has-text("Aceptar cookies")',
-          'button:has-text("Accept")',
-          // Selectores genéricos
-          'button',
-          'a[href*="cookie"]',
-          '[role="button"]'
-        ];
-        
-        let cookiesAccepted = false;
-        for (const selector of cookieSelectors) {
-          try {
-            const button = await page.$(selector);
-            if (button) {
-              await button.click();
-              console.log('✅ Cookies aceptadas con selector:', selector);
-              cookiesAccepted = true;
-              break;
-            }
-          } catch (e) {
-            console.log(`❌ Selector falló: ${selector}`);
-            // Continuar con el siguiente selector
-          }
-        }
-        
-        if (!cookiesAccepted) {
-          // Intentar con JavaScript directo
-          console.log('🔄 Intentando con JavaScript directo...');
-          await page.evaluate(() => {
-            const buttons = Array.from(document.querySelectorAll('button'));
-            const acceptButton = buttons.find(btn => 
-              btn.textContent.toLowerCase().includes('aceptar') ||
-              btn.textContent.toLowerCase().includes('accept') ||
-              btn.textContent.toLowerCase().includes('cookie')
-            );
-            if (acceptButton) {
-              acceptButton.click();
-              return true;
-            }
-            return false;
-          });
-        }
-        
-        // Esperar y recargar la página
-        await page.waitForTimeout(3000);
-        await page.reload({ waitUntil: 'domcontentloaded' });
-        
-      } catch (e) {
-        console.log('⚠️ No se pudo manejar cookies automáticamente:', e.message);
-      }
-    }
+    // Buscar directamente la sección de resultados sin importar las cookies
+    console.log('🔍 Buscando sección ui-search-results...');
     
     // Esperar por elementos específicos con timeout más corto
     try {
-      await page.waitForSelector('li.ui-search-layout__item', { timeout: 8000 });
-      console.log('✅ Encontrado li.ui-search-layout__item');
+      await page.waitForSelector('section.ui-search-results', { timeout: 10000 });
+      console.log('✅ Encontrado section.ui-search-results');
     } catch (e) {
-      console.log('⚠️ No se encontraron resultados, intentando continuar...');
+      console.log('⚠️ No se encontró section.ui-search-results, intentando continuar...');
     }
 
     // Verificar qué elementos existen realmente
     const debugInfo = await page.evaluate(() => {
       const selectors = [
+        'section.ui-search-results',
         'li.ui-search-layout__item',
         'div.ui-search-result__wrapper', 
         'a.poly-component__title',
@@ -201,28 +141,23 @@ async function getCheapestCar(query, year, limit = 1) {
     console.log('🔍 Debug - Elementos encontrados:', debugInfo.counts);
     console.log('📄 Preview del body:', debugInfo.bodyPreview);
 
-    /* --- NUEVO BLOQUE evaluate: corregido con selectores reales ---------- */
+    /* --- NUEVO BLOQUE evaluate: buscar directamente en ui-search-results ---------- */
     const items = await page.evaluate(() => {
       const toNumber = txt => {
         const m = (txt || '').match(/\d[\d.]*/);
         return m ? +m[0].replace(/\./g, '') : null;
       };
       
-      // Intentar múltiples selectores
-      const selectors = [
-        'li.ui-search-layout__item',
-        'div.ui-search-result__wrapper',
-        '.ui-search-result__wrapper'
-      ];
-      
-      let elements = [];
-      for (const selector of selectors) {
-        elements = document.querySelectorAll(selector);
-        if (elements.length > 0) {
-          console.log(`✅ Usando selector: ${selector} - ${elements.length} elementos`);
-          break;
-        }
+      // Buscar directamente en la sección de resultados
+      const searchResults = document.querySelector('section.ui-search-results');
+      if (!searchResults) {
+        console.log('❌ No se encontró section.ui-search-results');
+        return [];
       }
+      
+      // Buscar todos los elementos de resultados dentro de la sección
+      const elements = searchResults.querySelectorAll('li.ui-search-layout__item, div.ui-search-result__wrapper');
+      console.log(`✅ Encontrados ${elements.length} elementos en ui-search-results`);
       
       return Array.from(elements)
         .map(item => {
