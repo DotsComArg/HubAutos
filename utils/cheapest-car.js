@@ -84,13 +84,8 @@ async function getCheapestCar(query, year, limit = 1) {
       .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
 
     const basePath = yearParam ? `${yearParam}/${slug}` : slug;
-    url = `https://autos.mercadolibre.com.ar/${basePath}_OrderId_PRICE_NoIndex_True?sb=category`;
-
-    if (yearParam) {
-      url += `#applied_filter_id=VEHICLE_YEAR&applied_filter_name=A%C3%B1o` +
-             `&applied_filter_order=8&applied_value_id=[${yearParam}-${yearParam}]` +
-             `&applied_value_name=${yearParam}&applied_value_order=2&applied_value_results=0&is_custom=false`;
-    }
+    // Usar URL de listado en lugar de autos para evitar detección
+    url = `https://listado.mercadolibre.com.ar/${slug}?sb=all_mercadolibre#D[A:${encodeURIComponent(words.join(' '))}]`;
     
     console.log('🌐 URL:', url);
 
