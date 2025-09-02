@@ -13,7 +13,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "puppeteer": "^21.5.2",
+    "puppeteer-core": "^21.5.2",
+    "chrome-aws-lambda": "^10.1.0",
     "axios": "^1.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
