@@ -100,9 +100,35 @@ async function getCheapestCar(query, year, limit = 1) {
     // Esperar por elementos específicos con timeout más corto
     try {
       await page.waitForSelector('li.ui-search-layout__item', { timeout: 8000 });
+      console.log('✅ Encontrado li.ui-search-layout__item');
     } catch (e) {
       console.log('⚠️ No se encontraron resultados, intentando continuar...');
     }
+
+    // Verificar qué elementos existen realmente
+    const debugInfo = await page.evaluate(() => {
+      const selectors = [
+        'li.ui-search-layout__item',
+        'div.ui-search-result__wrapper', 
+        'a.poly-component__title',
+        '.andes-money-amount__fraction',
+        '.poly-attributes_list__item'
+      ];
+      
+      const results = {};
+      selectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        results[selector] = elements.length;
+      });
+      
+      // También verificar el HTML completo
+      const bodyText = document.body.innerText.substring(0, 500);
+      
+      return { counts: results, bodyPreview: bodyText };
+    });
+    
+    console.log('🔍 Debug - Elementos encontrados:', debugInfo.counts);
+    console.log('📄 Preview del body:', debugInfo.bodyPreview);
 
     /* --- NUEVO BLOQUE evaluate: corregido con selectores reales ---------- */
     const items = await page.evaluate(() => {
@@ -110,7 +136,24 @@ async function getCheapestCar(query, year, limit = 1) {
         const m = (txt || '').match(/\d[\d.]*/);
         return m ? +m[0].replace(/\./g, '') : null;
       };
-      return Array.from(document.querySelectorAll('li.ui-search-layout__item'))
+      
+      // Intentar múltiples selectores
+      const selectors = [
+        'li.ui-search-layout__item',
+        'div.ui-search-result__wrapper',
+        '.ui-search-result__wrapper'
+      ];
+      
+      let elements = [];
+      for (const selector of selectors) {
+        elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          console.log(`✅ Usando selector: ${selector} - ${elements.length} elementos`);
+          break;
+        }
+      }
+      
+      return Array.from(elements)
         .map(item => {
           // Título y link
           const titleAnchor = item.querySelector('a.poly-component__title');
