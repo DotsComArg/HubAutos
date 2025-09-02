@@ -97,6 +97,41 @@ async function getCheapestCar(query, year, limit = 1) {
     /* 4. Scraping ------------------------------------------------------- */
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
     
+    // Verificar si estamos en página de login/cookies
+    const pageContent = await page.evaluate(() => document.body.innerText);
+    console.log('📄 Contenido de la página:', pageContent.substring(0, 200));
+    
+    if (pageContent.includes('Aceptar cookies') || pageContent.includes('ingresa a tu cuenta')) {
+      console.log('⚠️ Detectada página de login/cookies, intentando aceptar cookies...');
+      try {
+        // Intentar diferentes selectores para aceptar cookies
+        const cookieSelectors = [
+          'button:contains("Aceptar cookies")',
+          'button:contains("Accept")',
+          '[data-testid="cookie-banner-accept"]',
+          '.cookie-banner-accept',
+          'button[aria-label*="cookies"]'
+        ];
+        
+        for (const selector of cookieSelectors) {
+          try {
+            await page.click(selector, { timeout: 2000 });
+            console.log('✅ Cookies aceptadas con selector:', selector);
+            break;
+          } catch (e) {
+            // Continuar con el siguiente selector
+          }
+        }
+        
+        // Esperar y recargar la página
+        await page.waitForTimeout(3000);
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        
+      } catch (e) {
+        console.log('⚠️ No se pudo manejar cookies automáticamente');
+      }
+    }
+    
     // Esperar por elementos específicos con timeout más corto
     try {
       await page.waitForSelector('li.ui-search-layout__item', { timeout: 8000 });
