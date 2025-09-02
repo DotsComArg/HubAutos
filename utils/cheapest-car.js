@@ -1,28 +1,22 @@
 // api/cheapest-car.js
 //
 //  ➜   GET /api/cheapest-car?q=toyota corolla 100000 km&year=2024&limit=1
-//  ➜   Requiere:  npm i puppeteer-core@24.2.0 @sparticuz/chromium-min@124
+//  ➜   Requiere:  npm i puppeteer@21.5.2
 // ------------------------------------------------------------------------
 
 const dotenv    = require('dotenv');
 dotenv.config();
 
-const chromium  = require('@sparticuz/chromium-min');
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 let url = '';
 
 /* ----------  User-Agent pool  ---------- */
 const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
 ];
 const pickUA = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-
-/* ----------  Chromium-min pack  ---------- */
-const PACK_URL =
-  process.env.CHROMIUM_PACK_URL ||
-  'https://github.com/Sparticuz/chromium/releases/download/v135.0.0-next.3/chromium-v135.0.0-next.3-pack.x64.tar';
 
 /* ====================================================================== */
 /*  Main Function                                                         */
@@ -39,15 +33,37 @@ async function getCheapestCar(query, year, limit = 1) {
 
     if (!q) return { error: 'Parametro query requerido' };
 
-    /* 2. Lanzar Chromium ------------------------------------------------ */
+    /* 2. Lanzar Puppeteer ------------------------------------------------ */
     const browser = await puppeteer.launch({
-      args: [...chromium.args, `--user-agent=${pickUA()}`],
-      executablePath: await chromium.executablePath(PACK_URL),
-      defaultViewport: chromium.defaultViewport,
-      headless: chromium.headless,
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--disable-extensions',
+        '--disable-plugins',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection'
+      ],
+      defaultViewport: {
+        width: 1920,
+        height: 1080
+      },
+      timeout: 30000
     });
 
     const page = await browser.newPage();
+    await page.setUserAgent(pickUA());
     await page.setExtraHTTPHeaders({ 'accept-language': 'es-AR,es;q=0.9', dnt: '1' });
     await page.setRequestInterception(true);
     page.on('request', r =>

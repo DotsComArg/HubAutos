@@ -10,8 +10,5 @@
       "src": "/(.*)",
       "dest": "/api/index.js"
     }
-  ],
-  "env": {
-    "CHROMIUM_PACK_URL": "https://github.com/Sparticuz/chromium/releases/download/v119.0.2/chromium-v119.0.2-pack.x64.tar"
-  }
+  ]
 } 
