@@ -41,78 +41,81 @@ function extractVehiclesFromHTML(html, limit = 1) {
       return m ? +m[0].replace(/\./g, '') : null;
     };
 
-    // Buscar li.ui-search-layout__item primero (como el código viejo)
-    const layoutItemRegex = /<li[^>]*class="[^"]*ui-search-layout__item[^"]*"[^>]*>(.*?)<\/li>/gs;
-    const layoutItems = html.match(layoutItemRegex) || [];
+    // Buscar todos los poly-component__title para encontrar títulos
+    const titleMatches = html.match(/<a[^>]*class="[^"]*poly-component__title[^"]*"[^>]*href="([^"]*)"[^>]*>([^<]+)<\/a>/g);
     
-    console.log(`📊 Encontrados ${layoutItems.length} layout items en el HTML`);
+    console.log(`📊 Encontrados ${titleMatches ? titleMatches.length : 0} títulos en el HTML`);
     
-    for (let i = 0; i < Math.min(layoutItems.length, limit * 2); i++) {
-      const layoutItem = layoutItems[i];
-      
+    if (!titleMatches) {
+      console.log('❌ No se encontraron títulos');
+      return vehicles;
+    }
+
+    // Buscar todos los precios
+    const priceMatches = html.match(/<span[^>]*class="[^"]*andes-money-amount__fraction[^"]*"[^>]*>([^<]+)<\/span>/g);
+    
+    console.log(`💰 Encontrados ${priceMatches ? priceMatches.length : 0} precios en el HTML`);
+    
+    if (!priceMatches) {
+      console.log('❌ No se encontraron precios');
+      return vehicles;
+    }
+
+    // Buscar todas las monedas
+    const currencyMatches = html.match(/<span[^>]*class="[^"]*andes-money-amount__currency-symbol[^"]*"[^>]*>([^<]+)<\/span>/g);
+    
+    console.log(`💱 Encontrados ${currencyMatches ? currencyMatches.length : 0} símbolos de moneda en el HTML`);
+
+    // Procesar cada título encontrado
+    for (let i = 0; i < Math.min(titleMatches.length, limit * 2); i++) {
       try {
-        // Buscar div.ui-search-result__wrapper dentro del layout item
-        const wrapperMatch = layoutItem.match(/<div[^>]*class="[^"]*ui-search-result__wrapper[^"]*"[^>]*>(.*?)<\/div>/s);
-        if (!wrapperMatch) continue;
-        
-        const wrapper = wrapperMatch[1];
-        
-        // Buscar poly-card dentro del wrapper
-        const cardMatch = wrapper.match(/<div[^>]*class="[^"]*poly-card[^"]*"[^>]*>(.*?)<\/div>/s);
-        if (!cardMatch) continue;
-        
-        const card = cardMatch[1];
+        const titleMatch = titleMatches[i];
         
         // Extraer título y link
-        const titleMatch = card.match(/<a[^>]*class="[^"]*poly-component__title[^"]*"[^>]*href="([^"]*)"[^>]*>([^<]+)<\/a>/);
-        const title = titleMatch ? titleMatch[2].trim() : '';
-        const link = titleMatch ? titleMatch[1] : '';
+        const titleLinkMatch = titleMatch.match(/href="([^"]*)"[^>]*>([^<]+)<\/a>/);
+        if (!titleLinkMatch) continue;
         
-        // Extraer imagen
-        const imageMatch = card.match(/<img[^>]*class="[^"]*poly-component__picture[^"]*"[^>]*src="([^"]*)"[^>]*>/);
-        const image = imageMatch ? imageMatch[1] : '';
+        const link = titleLinkMatch[1];
+        const title = titleLinkMatch[2].trim();
         
-        // Extraer precio y moneda
-        const priceFractionMatch = card.match(/<span[^>]*class="[^"]*andes-money-amount__fraction[^"]*"[^>]*>([^<]+)<\/span>/);
-        const priceFraction = priceFractionMatch ? priceFractionMatch[1].trim() : '';
+        // Buscar precio correspondiente (asumiendo que están en orden)
+        let price = null;
+        let currency = '';
         
-        const currencyMatch = card.match(/<span[^>]*class="[^"]*andes-money-amount__currency-symbol[^"]*"[^>]*>([^<]+)<\/span>/);
-        const currency = currencyMatch ? currencyMatch[1].trim() : '';
-        
-        const price = toNumber(priceFraction);
-        
-        // Extraer año y km
-        const attrsMatches = card.match(/<li[^>]*class="[^"]*poly-attributes_list__item[^"]*"[^>]*>([^<]+)<\/li>/g);
-        let year = '', km = '';
-        if (attrsMatches && attrsMatches.length > 0) {
-          year = attrsMatches[0].replace(/<[^>]*>/g, '').trim();
-        }
-        if (attrsMatches && attrsMatches.length > 1) {
-          km = attrsMatches[1].replace(/<[^>]*>/g, '').trim();
+        if (priceMatches && priceMatches[i]) {
+          const priceMatch = priceMatches[i].match(/>([^<]+)</);
+          if (priceMatch) {
+            price = toNumber(priceMatch[1]);
+          }
         }
         
-        // Extraer ubicación
-        const locationMatch = card.match(/<span[^>]*class="[^"]*poly-component__location[^"]*"[^>]*>([^<]+)<\/span>/);
-        const location = locationMatch ? locationMatch[1].trim() : '';
+        if (currencyMatches && currencyMatches[i]) {
+          const currencyMatch = currencyMatches[i].match(/>([^<]+)</);
+          if (currencyMatch) {
+            currency = currencyMatch[1].trim();
+          }
+        }
         
-        // Verificar si está validado
-        const validated = card.includes('poly-pill__pill');
+        // Si no hay moneda específica, inferirla del precio
+        if (!currency && price) {
+          currency = price > 10000 ? 'US$' : '$';
+        }
         
         if (title && price) {
           vehicles.push({
             title,
             link,
-            image,
+            image: '',
             price,
             currency,
-            year,
-            km,
-            location,
-            validated
+            year: '',
+            km: '',
+            location: '',
+            validated: false
           });
         }
       } catch (error) {
-        console.log(`Error procesando layout item ${i}:`, error.message);
+        console.log(`Error procesando título ${i}:`, error.message);
       }
     }
   } catch (error) {
