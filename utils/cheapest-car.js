@@ -1,13 +1,13 @@
 // api/cheapest-car.js
 //
 //  ➜   GET /api/cheapest-car?q=toyota corolla 100000 km&year=2024&limit=1
-//  ➜   Requiere:  npm i puppeteer@21.5.2
+//  ➜   Requiere:  npm i axios
 // ------------------------------------------------------------------------
 
 const dotenv    = require('dotenv');
 dotenv.config();
 
-const puppeteer = require('puppeteer');
+const axios = require('axios');
 let url = '';
 
 /* ----------  User-Agent pool  ---------- */
@@ -18,6 +18,74 @@ const USER_AGENTS = [
 ];
 const pickUA = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
+/* ----------  Build URL function  ---------- */
+function buildSearchURL(query, year) {
+  const tokens = query.trim().split(/\s+/);
+  const words = tokens.filter(t => t !== year.toString());
+  const slug = words.join(' ')
+    .toLowerCase()
+    .normalize('NFD').replace(/[^\w\s-]/g, '')
+    .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
+
+  return `https://autos.mercadolibre.com.ar/${year}/${slug}_OrderId_PRICE_NoIndex_True?sb=category`;
+}
+
+/* ----------  Extract data from HTML  ---------- */
+function extractVehiclesFromHTML(html, limit = 1) {
+  const vehicles = [];
+  
+  try {
+    // Buscar artículos usando regex para poly-card
+    const articleRegex = /<div[^>]*class="[^"]*ui-search-result__wrapper[^"]*"[^>]*>.*?<\/div>/gs;
+    const articles = html.match(articleRegex) || [];
+    
+    console.log(`📊 Encontrados ${articles.length} artículos en el HTML`);
+    
+    for (let i = 0; i < Math.min(articles.length, limit); i++) {
+      const article = articles[i];
+      
+      try {
+        // Extraer título
+        const titleMatch = article.match(/<a[^>]*class="[^"]*poly-component__title[^"]*"[^>]*>([^<]+)<\/a>/);
+        const title = titleMatch ? titleMatch[1].trim() : '';
+        
+        // Extraer precio
+        const priceMatch = article.match(/<span[^>]*class="[^"]*andes-money-amount__fraction[^"]*"[^>]*>([^<]+)<\/span>/);
+        const price = priceMatch ? priceMatch[1].trim() : '';
+        
+        // Extraer moneda
+        const currencyMatch = article.match(/<span[^>]*class="[^"]*andes-money-amount__currency-symbol[^"]*"[^>]*>([^<]+)<\/span>/);
+        const currency = currencyMatch ? currencyMatch[1].trim() : '';
+        
+        // Extraer link
+        const linkMatch = article.match(/<a[^>]*class="[^"]*poly-component__title[^"]*"[^>]*href="([^"]*)"[^>]*>/);
+        const link = linkMatch ? linkMatch[1] : '';
+        
+        // Extraer ubicación
+        const locationMatch = article.match(/<span[^>]*class="[^"]*poly-component__location[^"]*"[^>]*>([^<]+)<\/span>/);
+        const location = locationMatch ? locationMatch[1].trim() : '';
+        
+        if (title && price) {
+          vehicles.push({
+            title,
+            price: price.replace(/\./g, ''),
+            currency,
+            link: link.startsWith('http') ? link : `https://www.mercadolibre.com.ar${link}`,
+            location,
+            source: 'MercadoLibre'
+          });
+        }
+      } catch (error) {
+        console.log(`Error procesando artículo ${i}:`, error.message);
+      }
+    }
+  } catch (error) {
+    console.error('Error extrayendo datos del HTML:', error.message);
+  }
+  
+  return vehicles;
+}
+
 /* ====================================================================== */
 /*  Main Function                                                         */
 /* ====================================================================== */
@@ -25,125 +93,39 @@ async function getCheapestCar(query, year, limit = 1) {
   try {
     console.log(`🚗 Buscando vehículos: ${query} ${year}`);
 
-    /* 1. Parámetros ----------------------------------------------------- */
-    const q = `${query} ${year}`;
-    const yearParam = year;
-    const usedOnly = true;
-    const province = "";
-
-    if (!q) return { error: 'Parametro query requerido' };
-
-    /* 2. Lanzar Puppeteer ------------------------------------------------ */
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-        '--disable-extensions',
-        '--disable-plugins',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding',
-        '--disable-features=TranslateUI',
-        '--disable-ipc-flooding-protection'
-      ],
-      defaultViewport: {
-        width: 1920,
-        height: 1080
-      },
-      timeout: 30000
-    });
-
-    const page = await browser.newPage();
-    await page.setUserAgent(pickUA());
-    await page.setExtraHTTPHeaders({ 'accept-language': 'es-AR,es;q=0.9', dnt: '1' });
-    await page.setRequestInterception(true);
-    page.on('request', r =>
-      ['image', 'media', 'font'].includes(r.resourceType()) ? r.abort() : r.continue()
-    );
-
-    /* 3. Construir URL -------------------------------------------------- */
-    const tokens = q.trim().split(/\s+/);
-    let yearFromQuery = null;
-
-    if (yearParam && /^\d{4}$/.test(yearParam)) {
-      yearFromQuery = yearParam;
-    } else {
-      for (const tok of tokens)
-        if (/^\d{4}$/.test(tok) && tok >= 1900 && tok <= 2099) { yearFromQuery = tok; break; }
-    }
-
-    const words = yearFromQuery ? tokens.filter(t => t !== yearFromQuery.toString()) : tokens;
-    const slug  = words.join(' ')
-      .toLowerCase()
-      .normalize('NFD').replace(/[^\w\s-]/g, '')
-      .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
-
-    const basePath = yearFromQuery ? `${yearFromQuery}/${slug}` : slug;
-    url = `https://autos.mercadolibre.com.ar/${basePath}_OrderId_PRICE_NoIndex_True?sb=category`;
-
-    if (province) url += `&state=${province}`;
-    if (yearFromQuery) {
-      url += `#applied_filter_id=VEHICLE_YEAR&applied_filter_name=A%C3%B1o` +
-             `&applied_filter_order=8&applied_value_id=[${yearFromQuery}-${yearFromQuery}]` +
-             `&applied_value_name=${yearFromQuery}&applied_value_order=2&applied_value_results=0&is_custom=false`;
-    }
-    
+    /* 1. Construir URL -------------------------------------------------- */
+    url = buildSearchURL(query, year);
     console.log('🌐 URL:', url);
 
-    /* 4. Scraping ------------------------------------------------------- */
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await page.waitForSelector('li.ui-search-layout__item', { timeout: 10000 });
+    /* 2. Configurar headers -------------------------------------------- */
+    const headers = {
+      'User-Agent': pickUA(),
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'es-AR,es;q=0.8,en-US;q=0.5,en;q=0.3',
+      'Accept-Encoding': 'gzip, deflate',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+      'Cache-Control': 'max-age=0',
+      'Referer': 'https://www.mercadolibre.com.ar/'
+    };
 
-    /* --- BLOQUE evaluate: ajustado para poly-card ----------------- */
-    const items = await page.evaluate(() => {
-      const toNumber = txt => {
-        const m = (txt || '').match(/\d[\d.]*/);
-        return m ? +m[0].replace(/\./g, '') : null;
-      };
-      return Array.from(document.querySelectorAll('div.ui-search-result__wrapper'))
-        .map(wrapper => {
-          const card = wrapper.querySelector('.poly-card');
-          if (!card) return null;
-          // Título y link
-          const titleAnchor = card.querySelector('a.poly-component__title');
-          const title = titleAnchor?.innerText.trim() || '';
-          const link = titleAnchor?.href || '';
-          // Imagen
-          const img = card.querySelector('img.poly-component__picture');
-          const image = img?.src || '';
-          // Precio y moneda
-          const priceFraction = card.querySelector('.andes-money-amount__fraction')?.innerText.trim() || '';
-          const currency = card.querySelector('.andes-money-amount__currency-symbol')?.innerText.trim() || '';
-          const price = toNumber(priceFraction);
-          // Año y km
-          const attrs = card.querySelectorAll('.poly-attributes_list__item');
-          let year = '', km = '';
-          if (attrs.length > 0) year = attrs[0].innerText.trim();
-          if (attrs.length > 1) km = attrs[1].innerText.trim();
-          // Ubicación
-          const location = card.querySelector('.poly-component__location')?.innerText.trim() || '';
-          // Validado
-          const validated = !!card.querySelector('.poly-pill__pill');
-          return { title, link, image, price, currency, year, km, location, validated };
-        })
-        .filter(i => i && i.price);
+    /* 3. Hacer request HTTP --------------------------------------------- */
+    const response = await axios.get(url, {
+      headers,
+      timeout: 30000,
+      maxRedirects: 5
     });
 
-    await browser.close();
-    console.log('✅ Items encontrados:', items.length);
+    console.log(`✅ Respuesta recibida, status: ${response.status}`);
+    console.log(`📄 Tamaño del HTML: ${response.data.length} caracteres`);
+
+    /* 4. Extraer datos del HTML ----------------------------------------- */
+    const vehicles = extractVehiclesFromHTML(response.data, limit);
+    console.log('✅ Items encontrados:', vehicles.length);
 
     /* 5. Post-filtros --------------------------------------------------- */
-    let list = items
-      .sort((a, b) => a.price - b.price)
+    let list = vehicles
+      .sort((a, b) => parseInt(a.price) - parseInt(b.price))
       .slice(0, limit);
 
     if (!list.length) {
