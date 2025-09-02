@@ -103,7 +103,7 @@ module.exports = async (data) => {
     
     // Esperar a que la página cargue completamente
     console.log('Esperando que la página cargue...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise(resolve => setTimeout(resolve, 8000));
     
     // Verificar si hay contenido en la página
     const pageContent = await page.content();
@@ -119,8 +119,9 @@ module.exports = async (data) => {
       'li.ui-search-layout__item',
       'div.ui-search-result__wrapper',
       '.ui-search-result',
-      '.ui-search-layout__item',
-      '[data-testid="search-result"]'
+      '[data-testid="search-result"]',
+      '.andes-card.poly-card',
+      '.ui-search-layout__item'
     ];
     
     let selectorFound = false;
@@ -193,10 +194,11 @@ module.exports = async (data) => {
         
         // Buscar resultados con diferentes estructuras
         const selectors = [
+          'li.ui-search-layout__item',
           'div.ui-search-result__wrapper',
           '.ui-search-result',
-          '.ui-search-layout__item',
-          '[data-testid="search-result"]'
+          '[data-testid="search-result"]',
+          '.andes-card.poly-card'
         ];
         
         let allItems = [];
@@ -209,17 +211,47 @@ module.exports = async (data) => {
             const items = Array.from(elements)
               .map(wrapper => {
                 try {
-                  // Buscar precio
-                  const priceEl = wrapper.querySelector('.andes-money-amount__fraction, [class*="price"], [class*="Price"]');
+                  // Buscar precio con múltiples selectores
+                  const priceSelectors = [
+                    '.andes-money-amount__fraction',
+                    '.andes-money-amount__cents',
+                    '[class*="price"]',
+                    '[class*="Price"]',
+                    '[class*="money"]',
+                    '[class*="Money"]',
+                    '.ui-search-price__part--medium__amount',
+                    '.ui-search-price__part--medium__cents'
+                  ];
+                  
+                  let priceEl = null;
+                  for (const priceSelector of priceSelectors) {
+                    priceEl = wrapper.querySelector(priceSelector);
+                    if (priceEl) break;
+                  }
+                  
                   if (!priceEl) return null;
                   
                   const priceText = priceEl.innerText.trim();
                   const price = toNumber(priceText);
                   if (!price) return null;
                   
-                  // Buscar título
-                  const titleEl = wrapper.querySelector('a, h2, h3, [class*="title"], [class*="Title"]');
-                  const title = titleEl?.innerText.trim() || '';
+                  // Buscar título con múltiples selectors
+                  const titleSelectors = [
+                    'a[title]',
+                    'h2',
+                    'h3',
+                    '[class*="title"]',
+                    '[class*="Title"]',
+                    '.ui-search-item__title'
+                  ];
+                  
+                  let titleEl = null;
+                  for (const titleSelector of titleSelectors) {
+                    titleEl = wrapper.querySelector(titleSelector);
+                    if (titleEl) break;
+                  }
+                  
+                  const title = titleEl?.innerText.trim() || titleEl?.getAttribute('title') || '';
                   
                   // Buscar link
                   const linkEl = wrapper.querySelector('a');
@@ -229,15 +261,39 @@ module.exports = async (data) => {
                   const imgEl = wrapper.querySelector('img');
                   const image = imgEl?.src || '';
                   
-                  // Buscar atributos (año, km)
-                  const attrEls = wrapper.querySelectorAll('[class*="attr"], [class*="Attr"], span, div');
+                  // Buscar atributos (año, km) con múltiples selectors
+                  const attrSelectors = [
+                    '[class*="attr"]',
+                    '[class*="Attr"]',
+                    '.ui-search-item__group__element',
+                    '.ui-search-item__group__element--attrs'
+                  ];
+                  
                   let year = '', km = '';
-                  if (attrEls.length > 0) year = attrEls[0].innerText.trim();
-                  if (attrEls.length > 1) km = attrEls[1].innerText.trim();
+                  for (const attrSelector of attrSelectors) {
+                    const attrEls = wrapper.querySelectorAll(attrSelector);
+                    if (attrEls.length > 0) {
+                      year = attrEls[0].innerText.trim();
+                      if (attrEls.length > 1) km = attrEls[1].innerText.trim();
+                      break;
+                    }
+                  }
                   
                   // Buscar ubicación
-                  const locationEl = wrapper.querySelector('[class*="location"], [class*="Location"]');
-                  const location = locationEl?.innerText.trim() || '';
+                  const locationSelectors = [
+                    '[class*="location"]',
+                    '[class*="Location"]',
+                    '.ui-search-item__group__element--location'
+                  ];
+                  
+                  let location = '';
+                  for (const locationSelector of locationSelectors) {
+                    const locationEl = wrapper.querySelector(locationSelector);
+                    if (locationEl) {
+                      location = locationEl.innerText.trim();
+                      break;
+                    }
+                  }
                   
                   return { title, link, image, price, currency: '$', year, km, location, validated: false };
                 } catch (e) {
