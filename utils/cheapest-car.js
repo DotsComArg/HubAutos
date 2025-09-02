@@ -98,7 +98,7 @@ async function getCheapestCar(query, year, limit = 1) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
     
     // Esperar un poco para que se cargue todo el contenido
-    await page.waitForTimeout(3000);
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     // Verificar si estamos en página de login/cookies
     const pageContent = await page.evaluate(() => document.body.innerText);
