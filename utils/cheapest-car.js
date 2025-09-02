@@ -36,7 +36,24 @@ async function getCheapestCar(query, year, limit = 1) {
 
     /* 2. Lanzar Chromium ------------------------------------------------ */
     const browser = await puppeteer.launch({
-      args: [...chromium.args, `--user-agent=${pickUA()}`],
+      args: [
+        ...chromium.args,
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--single-process',
+        '--disable-extensions',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-field-trial-config',
+        '--disable-ipc-flooding-protection',
+        `--user-agent=${pickUA()}`
+      ],
       executablePath: await chromium.executablePath(PACK_URL),
       defaultViewport: chromium.defaultViewport,
       headless: chromium.headless,
@@ -46,7 +63,7 @@ async function getCheapestCar(query, year, limit = 1) {
     await page.setExtraHTTPHeaders({ 'accept-language': 'es-AR,es;q=0.9', dnt: '1' });
     await page.setRequestInterception(true);
     page.on('request', r =>
-      ['image', 'media', 'font'].includes(r.resourceType()) ? r.abort() : r.continue()
+      ['image', 'media', 'font', 'stylesheet'].includes(r.resourceType()) ? r.abort() : r.continue()
     );
 
     /* 3. Construir URL -------------------------------------------------- */
@@ -78,8 +95,14 @@ async function getCheapestCar(query, year, limit = 1) {
     console.log('🌐 URL:', url);
 
     /* 4. Scraping ------------------------------------------------------- */
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await page.waitForSelector('li.ui-search-layout__item', { timeout: 10000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    
+    // Esperar por elementos específicos con timeout más corto
+    try {
+      await page.waitForSelector('li.ui-search-layout__item', { timeout: 8000 });
+    } catch (e) {
+      console.log('⚠️ No se encontraron resultados, intentando continuar...');
+    }
 
     /* --- NUEVO BLOQUE evaluate: ajustado para poly-card ----------------- */
     const items = await page.evaluate(() => {
