@@ -15,106 +15,100 @@ let url = '';
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 ];
-const pickUA = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
-/* ----------  Chromium-min pack  ---------- */
-const PACK_URL =
-  process.env.CHROMIUM_PACK_URL ||
-  'https://github.com/Sparticuz/chromium/releases/download/v135.0.0-next.3/chromium-v135.0.0-next.3-pack.x64.tar';
+/* ----------  Random User-Agent  ---------- */
+const getRandomUserAgent = () => {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+};
 
-/* ====================================================================== */
-/*  Handler                                                               */
-/* ====================================================================== */
-module.exports = async (data) => {
+/* ----------  Extract Price from Text  ---------- */
+const extractPrice = (priceText) => {
+  if (!priceText) return null;
+  
+  // Remove currency symbols and commas, keep only numbers
+  const cleanPrice = priceText.replace(/[^\d,]/g, '').replace(',', '');
+  const price = parseInt(cleanPrice);
+  
+  return isNaN(price) ? null : price;
+};
+
+/* ----------  Extract Year from Text  ---------- */
+const extractYear = (text) => {
+  if (!text) return null;
+  
+  // Look for 4-digit year pattern
+  const yearMatch = text.match(/\b(19|20)\d{2}\b/);
+  return yearMatch ? parseInt(yearMatch[0]) : null;
+};
+
+/* ----------  Extract Kilometers from Text  ---------- */
+const extractKilometers = (text) => {
+  if (!text) return null;
+  
+  // Look for km patterns
+  const kmMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:km|kilómetros|kilometros)/i);
+  if (kmMatch) {
+    return parseInt(kmMatch[1].replace('.', ''));
+  }
+  
+  // Look for numbers that might be kilometers
+  const numberMatch = text.match(/(\d+(?:\.\d+)?)/);
+  if (numberMatch) {
+    const num = parseInt(numberMatch[1].replace('.', ''));
+    // If it's a reasonable km value (between 0 and 1,000,000)
+    if (num >= 0 && num <= 1000000) {
+      return num;
+    }
+  }
+  
+  return null;
+};
+
+/* ----------  Main Function  ---------- */
+async function getCheapestCar(query, year = null, limit = 5) {
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+    ignoreHTTPSErrors: true,
+  });
+
   try {
-    /* 1. Parámetros ----------------------------------------------------- */
-    const {
-      q,
-      year: yearParam,
-      limit = 10,
-      usedOnly=true,
-      province=""
-    } = data;
-
-    if (!q) return { error: 'Parametro ?q requerido' };
-
-    /* 2. Lanzar Chromium ------------------------------------------------ */
-    const browser = await puppeteer.launch({
-      args: [
-        ...chromium.args, 
-        `--user-agent=${pickUA()}`,
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu'
-      ],
-      executablePath: await chromium.executablePath(PACK_URL),
-      defaultViewport: chromium.defaultViewport,
-      headless: chromium.headless,
-    });
-
     const page = await browser.newPage();
-    await page.setExtraHTTPHeaders({ 'accept-language': 'es-AR,es;q=0.9', dnt: '1' });
-    await page.setRequestInterception(true);
-    page.on('request', r =>
-      ['image', 'media', 'font'].includes(r.resourceType()) ? r.abort() : r.continue()
-    );
     
-    // Configurar timeout más largo para la página
-    page.setDefaultTimeout(30000);
-    page.setDefaultNavigationTimeout(30000);
-
-    /* 3. Construir URL -------------------------------------------------- */
-    const tokens = q.trim().split(/\s+/);
-    let year = null;
-
-    if (yearParam && /^\d{4}$/.test(yearParam)) {
-      year = yearParam;
-    } else {
-      for (const tok of tokens)
-        if (/^\d{4}$/.test(tok) && tok >= 1900 && tok <= 2099) { year = tok; break; }
-    }
-
-    const words = year ? tokens.filter(t => t !== year) : tokens;
-    const slug  = words.join(' ')
-      .toLowerCase()
-      .normalize('NFD').replace(/[^\w\s-]/g, '')
-      .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
-
-    const basePath = year ? `${year}/${slug}` : slug;
-    url = `https://autos.mercadolibre.com.ar/${basePath}_OrderId_PRICE_NoIndex_True?sb=category`;
-
-    if (province) url += `&state=${province}`;
+    // Set random user agent
+    await page.setUserAgent(getRandomUserAgent());
+    
+    // Set viewport
+    await page.setViewport({ width: 1920, height: 1080 });
+    
+    // Build search URL
+    const searchQuery = encodeURIComponent(query);
+    url = `https://autos.mercadolibre.com.ar/${searchQuery}`;
+    
     if (year) {
-      url += `#applied_filter_id=VEHICLE_YEAR&applied_filter_name=A%C3%B1o` +
-             `&applied_filter_order=8&applied_value_id=[${year}-${year}]` +
-             `&applied_value_name=${year}&applied_value_order=2&applied_value_results=0&is_custom=false`;
+      url += `_VEHICLE*YEAR_${year}-${year}`;
     }
     
-    console.log('URL:', url);
-    /* 4. Scraping ------------------------------------------------------- */
+    url += '_OrderId_PRICE_NoIndex_True';
+    
     console.log('Navegando a:', url);
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     
-    // Esperar a que la página cargue completamente
+    // Navigate to the page
+    await page.goto(url, { 
+      waitUntil: 'networkidle2',
+      timeout: 30000 
+    });
+    
     console.log('Esperando que la página cargue...');
-    await new Promise(resolve => setTimeout(resolve, 8000));
     
-    // Verificar si hay contenido en la página
-    const pageContent = await page.content();
-    if (pageContent.includes('No se encontraron resultados') || pageContent.includes('no results')) {
-      console.log('Página indica que no hay resultados');
-      await browser.close();
-      return { error: 'No se encontraron resultados para esta búsqueda' };
-    }
+    // Wait for content to load
+    await page.waitForTimeout(8000);
     
-    // Intentar diferentes selectores para encontrar los resultados
-    let items = [];
+    // Try multiple selectors for finding items
     const selectors = [
       'li.ui-search-layout__item',
       'div.ui-search-result__wrapper',
@@ -124,225 +118,200 @@ module.exports = async (data) => {
       '.ui-search-layout__item'
     ];
     
+    let items = [];
     let selectorFound = false;
+    
     for (const selector of selectors) {
       try {
-        await page.waitForSelector(selector, { timeout: 5000 });
-        selectorFound = true;
-        console.log(`Selector encontrado: ${selector}`);
-        break;
-      } catch (e) {
-        console.log(`Selector ${selector} no encontrado, probando siguiente...`);
+        console.log(`Probando selector: ${selector}`);
+        items = await page.$$(selector);
+        
+        if (items.length > 0) {
+          console.log(`Selector ${selector} encontrado con ${items.length} elementos`);
+          selectorFound = true;
+          break;
+        } else {
+          console.log(`Selector ${selector} no encontrado, probando siguiente...`);
+        }
+      } catch (error) {
+        console.log(`Error con selector ${selector}:`, error.message);
         continue;
       }
     }
     
     if (!selectorFound) {
       console.log('Ningún selector funcionó, intentando con evaluación directa...');
-      // Intentar evaluar la página directamente
+      
+      // Try to find items using page.evaluate
       items = await page.evaluate(() => {
-        const toNumber = txt => {
-          const m = (txt || '').match(/\d[\d.]*/);
-          return m ? +m[0].replace(/\./g, '') : null;
-        };
+        const allItems = [];
         
-        // Buscar cualquier elemento que contenga precios
-        const priceElements = document.querySelectorAll('[class*="price"], [class*="Price"], [class*="money"], [class*="Money"]');
-        if (priceElements.length === 0) {
-          return [];
-        }
-        
-        // Buscar contenedores de resultados
-        const containers = document.querySelectorAll('div, li, article');
-        return Array.from(containers)
-          .map(container => {
-            try {
-              // Buscar precio
-              const priceEl = container.querySelector('[class*="price"], [class*="Price"], [class*="money"], [class*="Money"]');
-              if (!priceEl) return null;
-              
-              const priceText = priceEl.innerText.trim();
-              const price = toNumber(priceText);
-              if (!price) return null;
-              
-              // Buscar título
-              const titleEl = container.querySelector('a, h2, h3, [class*="title"], [class*="Title"]');
-              const title = titleEl?.innerText.trim() || '';
-              
-              // Buscar link
-              const linkEl = container.querySelector('a');
-              const link = linkEl?.href || '';
-              
-              // Buscar imagen
-              const imgEl = container.querySelector('img');
-              const image = imgEl?.src || '';
-              
-              return { title, link, image, price, currency: '$', year: '', km: '', location: '', validated: false };
-            } catch (e) {
-              return null;
-            }
-          })
-          .filter(i => i && i.price);
-      });
-    } else {
-      // Usar el selector que funcionó
-      items = await page.evaluate(() => {
-        const toNumber = txt => {
-          const m = (txt || '').match(/\d[\d.]*/);
-          return m ? +m[0].replace(/\./g, '') : null;
-        };
-        
-        // Buscar resultados con diferentes estructuras
-        const selectors = [
-          'li.ui-search-layout__item',
-          'div.ui-search-result__wrapper',
-          '.ui-search-result',
-          '[data-testid="search-result"]',
-          '.andes-card.poly-card'
+        // Try different approaches to find items
+        const approaches = [
+          () => document.querySelectorAll('li.ui-search-layout__item'),
+          () => document.querySelectorAll('.andes-card.poly-card'),
+          () => document.querySelectorAll('[data-testid="search-result"]'),
+          () => document.querySelectorAll('.ui-search-result'),
+          () => document.querySelectorAll('.andes-card'),
+          () => document.querySelectorAll('li')
         ];
         
-        let allItems = [];
-        
-        for (const selector of selectors) {
-          const elements = document.querySelectorAll(selector);
-          if (elements.length > 0) {
-            console.log(`Procesando ${elements.length} elementos con selector: ${selector}`);
-            
-            const items = Array.from(elements)
-              .map(wrapper => {
-                try {
-                  // Buscar precio con múltiples selectores
-                  const priceSelectors = [
-                    '.andes-money-amount__fraction',
-                    '.andes-money-amount__cents',
-                    '[class*="price"]',
-                    '[class*="Price"]',
-                    '[class*="money"]',
-                    '[class*="Money"]',
-                    '.ui-search-price__part--medium__amount',
-                    '.ui-search-price__part--medium__cents'
-                  ];
-                  
-                  let priceEl = null;
-                  for (const priceSelector of priceSelectors) {
-                    priceEl = wrapper.querySelector(priceSelector);
-                    if (priceEl) break;
-                  }
-                  
-                  if (!priceEl) return null;
-                  
-                  const priceText = priceEl.innerText.trim();
-                  const price = toNumber(priceText);
-                  if (!price) return null;
-                  
-                  // Buscar título con múltiples selectors
-                  const titleSelectors = [
-                    'a[title]',
-                    'h2',
-                    'h3',
-                    '[class*="title"]',
-                    '[class*="Title"]',
-                    '.ui-search-item__title'
-                  ];
-                  
-                  let titleEl = null;
-                  for (const titleSelector of titleSelectors) {
-                    titleEl = wrapper.querySelector(titleSelector);
-                    if (titleEl) break;
-                  }
-                  
-                  const title = titleEl?.innerText.trim() || titleEl?.getAttribute('title') || '';
-                  
-                  // Buscar link
-                  const linkEl = wrapper.querySelector('a');
-                  const link = linkEl?.href || '';
-                  
-                  // Buscar imagen
-                  const imgEl = wrapper.querySelector('img');
-                  const image = imgEl?.src || '';
-                  
-                  // Buscar atributos (año, km) con múltiples selectors
-                  const attrSelectors = [
-                    '[class*="attr"]',
-                    '[class*="Attr"]',
-                    '.ui-search-item__group__element',
-                    '.ui-search-item__group__element--attrs'
-                  ];
-                  
-                  let year = '', km = '';
-                  for (const attrSelector of attrSelectors) {
-                    const attrEls = wrapper.querySelectorAll(attrSelector);
-                    if (attrEls.length > 0) {
-                      year = attrEls[0].innerText.trim();
-                      if (attrEls.length > 1) km = attrEls[1].innerText.trim();
-                      break;
-                    }
-                  }
-                  
-                  // Buscar ubicación
-                  const locationSelectors = [
-                    '[class*="location"]',
-                    '[class*="Location"]',
-                    '.ui-search-item__group__element--location'
-                  ];
-                  
-                  let location = '';
-                  for (const locationSelector of locationSelectors) {
-                    const locationEl = wrapper.querySelector(locationSelector);
-                    if (locationEl) {
-                      location = locationEl.innerText.trim();
-                      break;
-                    }
-                  }
-                  
-                  return { title, link, image, price, currency: '$', year, km, location, validated: false };
-                } catch (e) {
-                  return null;
-                }
-              })
-              .filter(i => i && i.price);
-            
-            allItems = allItems.concat(items);
+        for (const approach of approaches) {
+          try {
+            const elements = approach();
+            if (elements.length > 0) {
+              return Array.from(elements);
+            }
+          } catch (e) {
+            continue;
           }
         }
         
-        return allItems;
+        return [];
       });
     }
-
+    
+    console.log(`Items encontrados: ${items.length}`);
+    
+    if (items.length === 0) {
+      return { error: 'Sin resultados' };
+    }
+    
+    // Extract data from items
+    const carData = [];
+    
+    for (let i = 0; i < Math.min(items.length, limit); i++) {
+      try {
+        const item = items[i];
+        
+        // Extract title
+        const titleSelectors = [
+          '.poly-component__title-wrapper a',
+          'h2 a',
+          '.andes-typography--weight-semibold',
+          'h3',
+          '.ui-search-item__title',
+          '.ui-search-item__group__title'
+        ];
+        
+        let title = '';
+        for (const titleSelector of titleSelectors) {
+          try {
+            const titleElement = await item.$(titleSelector);
+            if (titleElement) {
+              title = await titleElement.evaluate(el => el.textContent.trim());
+              if (title) break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+        
+        // Extract price
+        const priceSelectors = [
+          '.andes-money-amount__fraction',
+          '.andes-money-amount',
+          '.price__fraction',
+          '.price__symbol',
+          '.andes-money-amount--cents-superscript .andes-money-amount__fraction',
+          '.andes-money-amount--cents-comma .andes-money-amount__fraction'
+        ];
+        
+        let price = null;
+        for (const priceSelector of priceSelectors) {
+          try {
+            const priceElement = await item.$(priceSelector);
+            if (priceElement) {
+              const priceText = await priceElement.evaluate(el => el.textContent.trim());
+              price = extractPrice(priceText);
+              if (price) break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+        
+        // Extract attributes (year, km, etc.)
+        const attributesSelectors = [
+          '.poly-attributes_list',
+          '.ui-search-item__group__element',
+          '.andes-money-amount__cents',
+          '.ui-search-item__group__element--attributes',
+          '.andes-typography--size-xs'
+        ];
+        
+        let attributes = '';
+        for (const attrSelector of attributesSelectors) {
+          try {
+            const attrElement = await item.$(attrSelector);
+            if (attrElement) {
+              attributes = await attrElement.evaluate(el => el.textContent.trim());
+              if (attributes) break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+        
+        // Extract year and kilometers from title and attributes
+        const yearFromTitle = extractYear(title);
+        const yearFromAttributes = extractYear(attributes);
+        const kmFromTitle = extractKilometers(title);
+        const kmFromAttributes = extractKilometers(attributes);
+        
+        const extractedYear = yearFromTitle || yearFromAttributes;
+        const extractedKm = kmFromTitle || kmFromAttributes;
+        
+        // Extract URL
+        const urlSelectors = [
+          '.poly-component__title-wrapper a',
+          'h2 a',
+          'a[href*="mercadolibre"]',
+          '.ui-search-item__group__element a'
+        ];
+        
+        let itemUrl = '';
+        for (const urlSelector of urlSelectors) {
+          try {
+            const urlElement = await item.$(urlSelector);
+            if (urlElement) {
+              itemUrl = await urlElement.evaluate(el => el.href);
+              if (itemUrl) break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+        
+        if (title && price) {
+          carData.push({
+            title: title,
+            price: price,
+            year: extractedYear,
+            kilometers: extractedKm,
+            attributes: attributes,
+            url: itemUrl
+          });
+        }
+        
+      } catch (error) {
+        console.log(`Error procesando item ${i}:`, error.message);
+        continue;
+      }
+    }
+    
+    // Sort by price and return the cheapest
+    carData.sort((a, b) => a.price - b.price);
+    
+    return carData.length > 0 ? carData[0] : { error: 'Sin resultados válidos' };
+    
+  } catch (error) {
+    console.error('Error en la búsqueda:', error);
+    return { error: error.message };
+  } finally {
     await browser.close();
-    console.log('Items encontrados:', items.length);
-    if (items.length > 0) {
-      console.log('Primer item:', JSON.stringify(items[0], null, 2));
-    }
-    
-    /* 5. Post-filtros --------------------------------------------------- */
-    let list = items
-      //.filter(i => usedOnly ? /usado/i.test(i.condition) : true)
-    //  .filter(i => maxPrice ? i.price <= +maxPrice : true)
-      .sort((a, b) => a.price - b.price)
-      .slice(0, limit);
-    if (!list.length) return { error: 'Sin resultados' };
-    return limit == 1 ? list[0] : list;
-
-  } catch (err) {
-    console.error('Error en cheapest-car:', err);
-    
-    // Determinar el tipo de error
-    let errorMessage = 'Error interno del servidor';
-    if (err.name === 'TimeoutError') {
-      errorMessage = 'Timeout: La página no cargó completamente';
-    } else if (err.message.includes('selector')) {
-      errorMessage = 'Error de selector: No se encontraron elementos en la página';
-    } else if (err.message.includes('net::')) {
-      errorMessage = 'Error de red: No se pudo conectar a MercadoLibre';
-    }
-    
-    return { 
-      error: errorMessage, 
-      details: err.message, 
-      url,
-      stack: err.stack 
-    };
   }
-}; 
+}
+
+/* ----------  Export  ---------- */
+module.exports = { getCheapestCar }; 
