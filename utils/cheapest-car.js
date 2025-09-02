@@ -1,21 +1,21 @@
 // api/cheapest-car.js
 //
 //  ➜   GET /api/cheapest-car?q=toyota corolla 100000 km&year=2024&limit=1
-//  ➜   Requiere:  npm i puppeteer-core@24.2.0 @sparticuz/chromium-min@124
+//  ➜   Requiere:  npm i puppeteer-core@21.5.2 @sparticuz/chromium-min@119.0.2
 // ------------------------------------------------------------------------
 
 const dotenv    = require('dotenv');
 dotenv.config();
 
-const chromium  = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
+const { getChromiumConfig, isChromiumAvailable } = require('../config/chromium.js');
 let url = '';
 
 /* ----------  User-Agent pool  ---------- */
 const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
 ];
 
 /* ----------  Random User-Agent  ---------- */
@@ -68,15 +68,22 @@ const extractKilometers = (text) => {
 
 /* ----------  Main Function  ---------- */
 async function getCheapestCar(query, year = null, limit = 5) {
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
-    ignoreHTTPSErrors: true,
-  });
-
+  let browser = null;
+  
   try {
+    // Verificar si Chromium está disponible
+    const chromiumAvailable = await isChromiumAvailable();
+    if (!chromiumAvailable) {
+      return { error: 'Chromium no está disponible en este entorno' };
+    }
+
+    // Obtener configuración optimizada para Vercel
+    const launchOptions = getChromiumConfig();
+
+    console.log('Iniciando Chromium...');
+    browser = await puppeteer.launch(launchOptions);
+    console.log('Chromium iniciado correctamente');
+
     const page = await browser.newPage();
     
     // Set random user agent
@@ -309,7 +316,14 @@ async function getCheapestCar(query, year = null, limit = 5) {
     console.error('Error en la búsqueda:', error);
     return { error: error.message };
   } finally {
-    await browser.close();
+    if (browser) {
+      try {
+        await browser.close();
+        console.log('Navegador cerrado correctamente');
+      } catch (closeError) {
+        console.error('Error cerrando navegador:', closeError.message);
+      }
+    }
   }
 }
 
