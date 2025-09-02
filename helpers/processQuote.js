@@ -20,7 +20,7 @@ async function generateSimpleList(items) {
   const detalles = await Promise.all(
     items.map(async item => {
       const { price, currency, title, link, image, year, km, location, validated } = item;
-      if (typeof price !== "number") {
+      if (typeof price !== "number" && typeof price !== "string") {
         throw new TypeError(`price inválido en "${title}"`);
       }
       const tiny = await urlShortener.shortenUrl(link);
@@ -30,14 +30,15 @@ async function generateSimpleList(items) {
   );
 
   // Seleccionar hasta 3 autos más baratos
-  const sorted = [...detalles].sort((a, b) => a.price - b.price);
+  const sorted = [...detalles].sort((a, b) => parseInt(a.price) - parseInt(b.price));
   const seleccionados = sorted.slice(0, 3);
 
   // Formatear la lista de salida con formato completo
   const lines = seleccionados.map(a => {
+    const priceNum = parseInt(a.price);
     const parts = [
       a.title,
-      a.currency === "US$" ? `US$${a.price.toLocaleString('en-US')}` : `$${a.price.toLocaleString('es-AR')}`,
+      a.currency === "US$" ? `US$${priceNum.toLocaleString('en-US')}` : `$${priceNum.toLocaleString('es-AR')}`,
       a.year,
       a.km ? `${a.km} Km` : '',
       a.location || '',
@@ -81,7 +82,7 @@ async function processQuote(data) {
       };
     }
 
-    if (!cheapestCarData || !cheapestCarData.title) {
+    if (!cheapestCarData || !cheapestCarData.vehicles || cheapestCarData.vehicles.length === 0) {
       console.log("No se encontraron autos para la búsqueda");
       return {
         success: false,
@@ -89,18 +90,18 @@ async function processQuote(data) {
       };
     }
 
-    // Convertir el resultado único a array para compatibilidad
-    const carArray = [{
-      title: cheapestCarData.title,
-      price: cheapestCarData.price,
-      currency: cheapestCarData.price > 10000 ? 'US$' : '$',
-      link: cheapestCarData.url || '',
-      image: '',
-      year: cheapestCarData.year || '',
-      km: cheapestCarData.kilometers || '',
-      location: '',
-      validated: false
-    }];
+    // Usar los vehículos encontrados
+    const carArray = cheapestCarData.vehicles.map(vehicle => ({
+      title: vehicle.title,
+      price: vehicle.price,
+      currency: vehicle.currency || (parseInt(vehicle.price) > 10000 ? 'US$' : '$'),
+      link: vehicle.link || '',
+      image: vehicle.image || '',
+      year: vehicle.year || '',
+      km: vehicle.km || '',
+      location: vehicle.location || '',
+      validated: vehicle.validated || false
+    }));
 
     // Generar lista formateada de autos
     const tablePrices = await generateSimpleList(carArray);
