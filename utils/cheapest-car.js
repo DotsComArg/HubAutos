@@ -89,6 +89,10 @@ async function getCheapestCar(query, year, limit = 1) {
     /* 4. Scraping ------------------------------------------------------- */
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
     
+    // Verificar el contenido de la página
+    const pageContent = await page.evaluate(() => document.body.innerText);
+    console.log('📄 Contenido de la página:', pageContent.substring(0, 300));
+    
     // Esperar por elementos específicos con timeout más corto
     try {
       await page.waitForSelector('li.ui-search-layout__item', { timeout: 10000 });
@@ -97,15 +101,55 @@ async function getCheapestCar(query, year, limit = 1) {
       console.log('⚠️ No se encontró li.ui-search-layout__item, intentando continuar...');
     }
 
+    // Verificar qué elementos existen realmente
+    const debugInfo = await page.evaluate(() => {
+      const selectors = [
+        'li.ui-search-layout__item',
+        'div.ui-search-result__wrapper', 
+        'a.poly-component__title',
+        '.andes-money-amount__fraction',
+        '.poly-attributes_list__item',
+        'section.ui-search-results',
+        'ol.ui-search-layout'
+      ];
+      
+      const results = {};
+      selectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        results[selector] = elements.length;
+      });
+      
+      return results;
+    });
+    
+    console.log('🔍 Debug - Elementos encontrados:', debugInfo);
+
     /* --- NUEVO BLOQUE evaluate: ajustado para poly-card ----------------- */
     const items = await page.evaluate(() => {
       const toNumber = txt => {
         const m = (txt || '').match(/\d[\d.]*/);
         return m ? +m[0].replace(/\./g, '') : null;
       };
-      return Array.from(document.querySelectorAll('div.ui-search-result__wrapper'))
+      
+      // Intentar múltiples selectores
+      const selectors = [
+        'div.ui-search-result__wrapper',
+        'li.ui-search-layout__item',
+        '.ui-search-result__wrapper'
+      ];
+      
+      let elements = [];
+      for (const selector of selectors) {
+        elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          console.log(`✅ Usando selector: ${selector} - ${elements.length} elementos`);
+          break;
+        }
+      }
+      
+      return Array.from(elements)
         .map(wrapper => {
-          const card = wrapper.querySelector('.poly-card');
+          const card = wrapper.querySelector('.poly-card') || wrapper;
           if (!card) return null;
           // Título y link
           const titleAnchor = card.querySelector('a.poly-component__title');
