@@ -1,4 +1,4 @@
-const cheapestCar = require('../utils/cheapest-car');
+const { getCheapestCar } = require('../utils/cheapest-car');
 const urlShortener = require('../utils/urlShortener');
 const { KommoApiClient } = require('../classes/kommoApi');
 
@@ -67,11 +67,7 @@ async function processQuote(data) {
 
     // Buscar cotizaciones en MercadoLibre
     const query = `${data.marca} ${data.modelo} ${data.version} ${data.kilometraje || data.km}`;
-    const cheapestCarData = await cheapestCar({
-      q: query,
-      year: Number(data.ano || data.year),
-      usedOnly: true,
-    });
+    const cheapestCarData = await getCheapestCar(query, Number(data.ano || data.year), 5);
 
     console.log("Datos de cotización obtenidos:", cheapestCarData);
 
@@ -85,7 +81,7 @@ async function processQuote(data) {
       };
     }
 
-    if (!Array.isArray(cheapestCarData) || cheapestCarData.length === 0) {
+    if (!cheapestCarData || !cheapestCarData.title) {
       console.log("No se encontraron autos para la búsqueda");
       return {
         success: false,
@@ -93,8 +89,21 @@ async function processQuote(data) {
       };
     }
 
+    // Convertir el resultado único a array para compatibilidad
+    const carArray = [{
+      title: cheapestCarData.title,
+      price: cheapestCarData.price,
+      currency: cheapestCarData.price > 10000 ? 'US$' : '$',
+      link: cheapestCarData.url || '',
+      image: '',
+      year: cheapestCarData.year || '',
+      km: cheapestCarData.kilometers || '',
+      location: '',
+      validated: false
+    }];
+
     // Generar lista formateada de autos
-    const tablePrices = await generateSimpleList(cheapestCarData);
+    const tablePrices = await generateSimpleList(carArray);
 
     // Crear nota con cotizaciones
     const bodyNote = [{
