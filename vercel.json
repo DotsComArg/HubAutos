@@ -1,22 +1,16 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
     }
-  ],
+  },
   "routes": [
     {
       "src": "/(.*)",
       "dest": "/api/index.js"
     }
   ],
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 30
-    }
-  },
   "env": {
     "CHROMIUM_PACK_URL": "https://github.com/Sparticuz/chromium/releases/download/v119.0.2/chromium-v119.0.2-pack.x64.tar"
   }
