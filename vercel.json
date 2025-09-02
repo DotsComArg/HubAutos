@@ -1,7 +1,8 @@
 {
+  "version": 2,
   "functions": {
     "api/**/*.js": {
-      "runtime": "nodejs18.x"
+      "maxDuration": 30
     }
   },
   "env": {
@@ -11,5 +12,11 @@
     "env": {
       "CHROME_EXECUTABLE_PATH": "/usr/bin/google-chrome-stable"
     }
-  }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.js"
+    }
+  ]
 } 
