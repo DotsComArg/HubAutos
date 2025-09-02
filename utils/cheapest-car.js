@@ -35,48 +35,78 @@ function extractVehiclesFromHTML(html, limit = 1) {
   const vehicles = [];
   
   try {
-    // Buscar artículos usando regex para poly-card
-    const articleRegex = /<div[^>]*class="[^"]*ui-search-result__wrapper[^"]*"[^>]*>.*?<\/div>/gs;
-    const articles = html.match(articleRegex) || [];
+    // Función para convertir texto a número
+    const toNumber = txt => {
+      const m = (txt || '').match(/\d[\d.]*/);
+      return m ? +m[0].replace(/\./g, '') : null;
+    };
+
+    // Buscar todos los wrappers de resultados
+    const wrapperRegex = /<div[^>]*class="[^"]*ui-search-result__wrapper[^"]*"[^>]*>(.*?)<\/div>/gs;
+    const wrappers = html.match(wrapperRegex) || [];
     
-    console.log(`📊 Encontrados ${articles.length} artículos en el HTML`);
+    console.log(`📊 Encontrados ${wrappers.length} wrappers en el HTML`);
     
-    for (let i = 0; i < Math.min(articles.length, limit); i++) {
-      const article = articles[i];
+    for (let i = 0; i < Math.min(wrappers.length, limit * 2); i++) {
+      const wrapper = wrappers[i];
       
       try {
-        // Extraer título
-        const titleMatch = article.match(/<a[^>]*class="[^"]*poly-component__title[^"]*"[^>]*>([^<]+)<\/a>/);
-        const title = titleMatch ? titleMatch[1].trim() : '';
+        // Buscar poly-card dentro del wrapper
+        const cardMatch = wrapper.match(/<div[^>]*class="[^"]*poly-card[^"]*"[^>]*>(.*?)<\/div>/s);
+        if (!cardMatch) continue;
         
-        // Extraer precio
-        const priceMatch = article.match(/<span[^>]*class="[^"]*andes-money-amount__fraction[^"]*"[^>]*>([^<]+)<\/span>/);
-        const price = priceMatch ? priceMatch[1].trim() : '';
+        const card = cardMatch[1];
         
-        // Extraer moneda
-        const currencyMatch = article.match(/<span[^>]*class="[^"]*andes-money-amount__currency-symbol[^"]*"[^>]*>([^<]+)<\/span>/);
+        // Extraer título y link
+        const titleMatch = card.match(/<a[^>]*class="[^"]*poly-component__title[^"]*"[^>]*href="([^"]*)"[^>]*>([^<]+)<\/a>/);
+        const title = titleMatch ? titleMatch[2].trim() : '';
+        const link = titleMatch ? titleMatch[1] : '';
+        
+        // Extraer imagen
+        const imageMatch = card.match(/<img[^>]*class="[^"]*poly-component__picture[^"]*"[^>]*src="([^"]*)"[^>]*>/);
+        const image = imageMatch ? imageMatch[1] : '';
+        
+        // Extraer precio y moneda
+        const priceFractionMatch = card.match(/<span[^>]*class="[^"]*andes-money-amount__fraction[^"]*"[^>]*>([^<]+)<\/span>/);
+        const priceFraction = priceFractionMatch ? priceFractionMatch[1].trim() : '';
+        
+        const currencyMatch = card.match(/<span[^>]*class="[^"]*andes-money-amount__currency-symbol[^"]*"[^>]*>([^<]+)<\/span>/);
         const currency = currencyMatch ? currencyMatch[1].trim() : '';
         
-        // Extraer link
-        const linkMatch = article.match(/<a[^>]*class="[^"]*poly-component__title[^"]*"[^>]*href="([^"]*)"[^>]*>/);
-        const link = linkMatch ? linkMatch[1] : '';
+        const price = toNumber(priceFraction);
+        
+        // Extraer año y km
+        const attrsMatches = card.match(/<li[^>]*class="[^"]*poly-attributes_list__item[^"]*"[^>]*>([^<]+)<\/li>/g);
+        let year = '', km = '';
+        if (attrsMatches && attrsMatches.length > 0) {
+          year = attrsMatches[0].replace(/<[^>]*>/g, '').trim();
+        }
+        if (attrsMatches && attrsMatches.length > 1) {
+          km = attrsMatches[1].replace(/<[^>]*>/g, '').trim();
+        }
         
         // Extraer ubicación
-        const locationMatch = article.match(/<span[^>]*class="[^"]*poly-component__location[^"]*"[^>]*>([^<]+)<\/span>/);
+        const locationMatch = card.match(/<span[^>]*class="[^"]*poly-component__location[^"]*"[^>]*>([^<]+)<\/span>/);
         const location = locationMatch ? locationMatch[1].trim() : '';
+        
+        // Verificar si está validado
+        const validated = card.includes('poly-pill__pill');
         
         if (title && price) {
           vehicles.push({
             title,
-            price: price.replace(/\./g, ''),
+            link,
+            image,
+            price,
             currency,
-            link: link.startsWith('http') ? link : `https://www.mercadolibre.com.ar${link}`,
+            year,
+            km,
             location,
-            source: 'MercadoLibre'
+            validated
           });
         }
       } catch (error) {
-        console.log(`Error procesando artículo ${i}:`, error.message);
+        console.log(`Error procesando wrapper ${i}:`, error.message);
       }
     }
   } catch (error) {
@@ -125,7 +155,7 @@ async function getCheapestCar(query, year, limit = 1) {
 
     /* 5. Post-filtros --------------------------------------------------- */
     let list = vehicles
-      .sort((a, b) => parseInt(a.price) - parseInt(b.price))
+      .sort((a, b) => a.price - b.price)
       .slice(0, limit);
 
     if (!list.length) {
