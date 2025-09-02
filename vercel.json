@@ -10,5 +10,8 @@
       "src": "/(.*)",
       "dest": "/api/index.js"
     }
-  ]
+  ],
+  "env": {
+    "CHROMIUM_PACK_URL": "https://github.com/Sparticuz/chromium/releases/download/v135.0.0-next.3/chromium-v135.0.0-next.3-pack.x64.tar"
+  }
 } 

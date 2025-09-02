@@ -25,19 +25,20 @@ const PACK_URL =
   'https://github.com/Sparticuz/chromium/releases/download/v135.0.0-next.3/chromium-v135.0.0-next.3-pack.x64.tar';
 
 /* ====================================================================== */
-/*  Main Function                                                         */
+/*  Handler                                                               */
 /* ====================================================================== */
-async function getCheapestCar(query, year, limit = 1) {
+module.exports = async (data) => {
   try {
-    console.log(`🚗 Buscando vehículos: ${query} ${year}`);
-
     /* 1. Parámetros ----------------------------------------------------- */
-    const q = `${query} ${year}`;
-    const yearParam = year;
-    const usedOnly = true;
-    const province = "";
+    const {
+      q,
+      year: yearParam,
+      limit = 10,
+      usedOnly=true,
+      province=""
+    } = data;
 
-    if (!q) return { error: 'Parametro query requerido' };
+    if (!q) return { error: 'Parametro ?q requerido' };
 
     /* 2. Lanzar Chromium ------------------------------------------------ */
     const browser = await puppeteer.launch({
@@ -56,38 +57,37 @@ async function getCheapestCar(query, year, limit = 1) {
 
     /* 3. Construir URL -------------------------------------------------- */
     const tokens = q.trim().split(/\s+/);
-    let yearFromQuery = null;
+    let year = null;
 
     if (yearParam && /^\d{4}$/.test(yearParam)) {
-      yearFromQuery = yearParam;
+      year = yearParam;
     } else {
       for (const tok of tokens)
-        if (/^\d{4}$/.test(tok) && tok >= 1900 && tok <= 2099) { yearFromQuery = tok; break; }
+        if (/^\d{4}$/.test(tok) && tok >= 1900 && tok <= 2099) { year = tok; break; }
     }
 
-    const words = yearFromQuery ? tokens.filter(t => t !== yearFromQuery.toString()) : tokens;
+    const words = year ? tokens.filter(t => t !== year) : tokens;
     const slug  = words.join(' ')
       .toLowerCase()
       .normalize('NFD').replace(/[^\w\s-]/g, '')
       .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
 
-    const basePath = yearFromQuery ? `${yearFromQuery}/${slug}` : slug;
+    const basePath = year ? `${year}/${slug}` : slug;
     url = `https://autos.mercadolibre.com.ar/${basePath}_OrderId_PRICE_NoIndex_True?sb=category`;
 
     if (province) url += `&state=${province}`;
-    if (yearFromQuery) {
+    if (year) {
       url += `#applied_filter_id=VEHICLE_YEAR&applied_filter_name=A%C3%B1o` +
-             `&applied_filter_order=8&applied_value_id=[${yearFromQuery}-${yearFromQuery}]` +
-             `&applied_value_name=${yearFromQuery}&applied_value_order=2&applied_value_results=0&is_custom=false`;
+             `&applied_filter_order=8&applied_value_id=[${year}-${year}]` +
+             `&applied_value_name=${year}&applied_value_order=2&applied_value_results=0&is_custom=false`;
     }
     
-    console.log('🌐 URL:', url);
-
+    console.log('URL:', url);
     /* 4. Scraping ------------------------------------------------------- */
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForSelector('li.ui-search-layout__item', { timeout: 10000 });
 
-    /* --- BLOQUE evaluate: ajustado para poly-card ----------------- */
+    /* --- NUEVO BLOQUE evaluate: ajustado para poly-card ----------------- */
     const items = await page.evaluate(() => {
       const toNumber = txt => {
         const m = (txt || '').match(/\d[\d.]*/);
@@ -123,40 +123,18 @@ async function getCheapestCar(query, year, limit = 1) {
     });
 
     await browser.close();
-    console.log('✅ Items encontrados:', items.length);
-
+    console.log('Items:', items.length);
     /* 5. Post-filtros --------------------------------------------------- */
     let list = items
+      //.filter(i => usedOnly ? /usado/i.test(i.condition) : true)
+    //  .filter(i => maxPrice ? i.price <= +maxPrice : true)
       .sort((a, b) => a.price - b.price)
       .slice(0, limit);
-
-    if (!list.length) {
-      return {
-        error: 'No se encontraron vehículos',
-        query: `${query} ${year}`,
-        url: url
-      };
-    }
-
-    const result = limit == 1 ? list[0] : list;
-    
-    return {
-      success: true,
-      query: `${query} ${year}`,
-      vehicles: limit == 1 ? [result] : result,
-      url: url,
-      timestamp: new Date().toISOString()
-    };
+    if (!list.length) return { error: 'Sin resultados' };
+    return limit == 1 ? list[0] : list;
 
   } catch (err) {
-    console.error('❌ Error en getCheapestCar:', err);
-    return {
-      error: 'Error interno del servidor',
-      details: err.message,
-      query: `${query} ${year}`,
-      url: url
-    };
+    console.error(err);
+    return { error: 'Error interno del servidor', details: err.message, url };
   }
-}
-
-module.exports = { getCheapestCar }; 
+};
