@@ -137,7 +137,7 @@ async function processKommoLead(data) {
     if (!existingContact && data.email) {
       console.log(`🔍 Buscando contacto existente por email: ${data.email}`);
       try {
-        const emailContact = await kommoApiClientWordpress.getContactByPhone(data.email);
+        const emailContact = await kommoApiClientWordpress.getContactByEmail(data.email);
         if (emailContact) {
           console.log(`✅ Contacto existente encontrado por email con ID: ${emailContact.idContact}`);
           
@@ -234,7 +234,7 @@ app.post("/api/auto-quote", async (req, res) => {
     
     // Verificar si ya se procesó esta solicitud (prevenir duplicados)
     const requestId = `${req.body.email}-${req.body.phone}-${Date.now()}`;
-    console.log("🆔 ID de solicitud:", requestId);
+    console.log("�� ID de solicitud:", requestId);
     
     // Guardar en Google Sheets
     console.log("📊 Guardando en Google Sheets...");

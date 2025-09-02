@@ -97,6 +97,24 @@ class KommoApiClient {
     };
   }
 
+  async getContactByEmail(email) {
+    const url = `https://${this.variables.subdomain}/api/v4/contacts?with=leads&query=${email}`;
+    const response = await this.getRequest(url);
+    if (
+      response.status === 204 ||
+      response._embedded.contacts.length === 0
+    ) {
+      return false;
+    }
+    return {
+      isContact: true,
+      idContact: response._embedded.contacts[0].id,
+      leads: response._embedded.contacts[0]._embedded.leads.map(
+        (lead) => lead.id
+      ),
+    };
+  }
+
   async getLeadsByPhone(phone) {
     try {
       // Buscar leads directamente por teléfono
