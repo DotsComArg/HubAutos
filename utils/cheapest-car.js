@@ -1,12 +1,13 @@
 // api/cheapest-car.js
 //
 //  ➜   GET /api/cheapest-car?q=toyota corolla 100000 km&year=2024&limit=1
-//  ➜   Requiere:  npm i puppeteer-core
+//  ➜   Requiere:  npm i puppeteer-core@24.2.0 @sparticuz/chromium-min@124
 // ------------------------------------------------------------------------
 
 const dotenv    = require('dotenv');
 dotenv.config();
 
+const chromium  = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
 let url = '';
 
@@ -17,6 +18,11 @@ const USER_AGENTS = [
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
 ];
 const pickUA = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+
+/* ----------  Chromium-min pack  ---------- */
+const PACK_URL =
+  process.env.CHROMIUM_PACK_URL ||
+  'https://github.com/Sparticuz/chromium/releases/download/v135.0.0-next.3/chromium-v135.0.0-next.3-pack.x64.tar';
 
 /* ====================================================================== */
 /*  Main Function                                                         */
@@ -29,23 +35,11 @@ async function getCheapestCar(query, year, limit = 1) {
     if (!query) return { error: 'Parametro query requerido' };
 
     /* 2. Lanzar Chromium ------------------------------------------------ */
-    // Configuración para Vercel/Serverless
     const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--single-process',
-        '--disable-extensions',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-        `--user-agent=${pickUA()}`
-      ]
+      args: [...chromium.args, `--user-agent=${pickUA()}`],
+      executablePath: await chromium.executablePath(PACK_URL),
+      defaultViewport: chromium.defaultViewport,
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
@@ -87,7 +81,7 @@ async function getCheapestCar(query, year, limit = 1) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForSelector('li.ui-search-layout__item', { timeout: 10000 });
 
-    /* --- BLOQUE evaluate: ajustado para poly-card ----------------- */
+    /* --- NUEVO BLOQUE evaluate: ajustado para poly-card ----------------- */
     const items = await page.evaluate(() => {
       const toNumber = txt => {
         const m = (txt || '').match(/\d[\d.]*/);
