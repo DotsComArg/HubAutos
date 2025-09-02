@@ -110,17 +110,53 @@ async function getCheapestCar(query, year, limit = 1) {
           'button:contains("Accept")',
           '[data-testid="cookie-banner-accept"]',
           '.cookie-banner-accept',
-          'button[aria-label*="cookies"]'
+          'button[aria-label*="cookies"]',
+          // Selectores más específicos para MercadoLibre
+          'button[data-testid="cookie-banner-accept"]',
+          'button[data-testid="cookie-accept"]',
+          'button[aria-label="Aceptar cookies"]',
+          'button[aria-label="Accept cookies"]',
+          // Buscar por texto exacto
+          'button:has-text("Aceptar cookies")',
+          'button:has-text("Accept")',
+          // Selectores genéricos
+          'button',
+          'a[href*="cookie"]',
+          '[role="button"]'
         ];
         
+        let cookiesAccepted = false;
         for (const selector of cookieSelectors) {
           try {
-            await page.click(selector, { timeout: 2000 });
-            console.log('✅ Cookies aceptadas con selector:', selector);
-            break;
+            const button = await page.$(selector);
+            if (button) {
+              await button.click();
+              console.log('✅ Cookies aceptadas con selector:', selector);
+              cookiesAccepted = true;
+              break;
+            }
           } catch (e) {
+            console.log(`❌ Selector falló: ${selector}`);
             // Continuar con el siguiente selector
           }
+        }
+        
+        if (!cookiesAccepted) {
+          // Intentar con JavaScript directo
+          console.log('🔄 Intentando con JavaScript directo...');
+          await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('button'));
+            const acceptButton = buttons.find(btn => 
+              btn.textContent.toLowerCase().includes('aceptar') ||
+              btn.textContent.toLowerCase().includes('accept') ||
+              btn.textContent.toLowerCase().includes('cookie')
+            );
+            if (acceptButton) {
+              acceptButton.click();
+              return true;
+            }
+            return false;
+          });
         }
         
         // Esperar y recargar la página
@@ -128,7 +164,7 @@ async function getCheapestCar(query, year, limit = 1) {
         await page.reload({ waitUntil: 'domcontentloaded' });
         
       } catch (e) {
-        console.log('⚠️ No se pudo manejar cookies automáticamente');
+        console.log('⚠️ No se pudo manejar cookies automáticamente:', e.message);
       }
     }
     
