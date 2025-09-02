@@ -60,8 +60,17 @@ async function getCheapestCar(query, year, limit = 1) {
         if (/^\d{4}$/.test(tok) && tok >= 1900 && tok <= 2099) { yearParam = tok; break; }
     }
 
+    // Filtrar el kilometraje de la búsqueda (números que no son años)
     const words = yearParam ? tokens.filter(t => t !== yearParam.toString()) : tokens;
-    const slug  = words.join(' ')
+    const filteredWords = words.filter(word => {
+      // Excluir números que parecen kilometraje (4-6 dígitos)
+      if (/^\d{4,6}$/.test(word)) return false;
+      // Excluir palabras como "km", "kilometros", etc.
+      if (/^km|kilometros?$/i.test(word)) return false;
+      return true;
+    });
+    
+    const slug  = filteredWords.join(' ')
       .toLowerCase()
       .normalize('NFD').replace(/[^\w\s-]/g, '')
       .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
