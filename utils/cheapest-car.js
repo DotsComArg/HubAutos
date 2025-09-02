@@ -1,14 +1,13 @@
 // api/cheapest-car.js
 //
 //  ➜   GET /api/cheapest-car?q=toyota corolla 100000 km&year=2024&limit=1
-//  ➜   Requiere:  npm i puppeteer-core@21.5.2 chrome-aws-lambda@10.1.0
+//  ➜   Requiere:  npm i axios
 // ------------------------------------------------------------------------
 
 const dotenv    = require('dotenv');
 dotenv.config();
 
-const puppeteer = require('puppeteer-core');
-const chromium = require('chrome-aws-lambda');
+const axios = require('axios');
 let url = '';
 
 /* ----------  User-Agent pool  ---------- */
@@ -23,33 +22,59 @@ function getRandomUserAgent() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-/* ----------  Scraping function  ---------- */
-async function scrapeMercadoLibre(query, year, limit = 1) {
-  let browser;
+/* ----------  Extract data from HTML  ---------- */
+function extractVehiclesFromHTML(html, limit = 1) {
+  const vehicles = [];
   
   try {
-    console.log(`🔍 Iniciando búsqueda: ${query} ${year}`);
+    // Buscar artículos de vehículos usando regex
+    const articleRegex = /<article[^>]*>.*?<\/article>/gs;
+    const articles = html.match(articleRegex) || [];
     
-    // Configuración optimizada para Vercel con chrome-aws-lambda
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless,
-      ignoreHTTPSErrors: true,
-      timeout: 30000
-    });
+    for (let i = 0; i < Math.min(articles.length, limit); i++) {
+      const article = articles[i];
+      
+      try {
+        // Extraer título
+        const titleMatch = article.match(/<h2[^>]*>.*?<a[^>]*>([^<]+)<\/a>/);
+        const title = titleMatch ? titleMatch[1].trim() : '';
+        
+        // Extraer precio
+        const priceMatch = article.match(/data-testid="price"[^>]*>.*?<span[^>]*>([^<]+)<\/span>/);
+        const price = priceMatch ? priceMatch[1].trim() : '';
+        
+        // Extraer ubicación
+        const locationMatch = article.match(/data-testid="location"[^>]*>([^<]+)</);
+        const location = locationMatch ? locationMatch[1].trim() : '';
+        
+        // Extraer link
+        const linkMatch = article.match(/<a[^>]*href="([^"]*)"[^>]*>/);
+        const link = linkMatch ? linkMatch[1] : '';
+        
+        if (title && price) {
+          vehicles.push({
+            title,
+            price,
+            location,
+            link: link.startsWith('http') ? link : `https://www.mercadolibre.com.ar${link}`,
+            source: 'MercadoLibre'
+          });
+        }
+      } catch (error) {
+        console.log(`Error procesando artículo ${i}:`, error.message);
+      }
+    }
+  } catch (error) {
+    console.error('Error extrayendo datos del HTML:', error.message);
+  }
+  
+  return vehicles;
+}
 
-    const page = await browser.newPage();
-    
-    // Configurar User-Agent aleatorio
-    await page.setUserAgent(getRandomUserAgent());
-    
-    // Configurar viewport
-    await page.setViewport({ width: 1920, height: 1080 });
-    
-    // Configurar timeout
-    page.setDefaultTimeout(30000);
+/* ----------  Scraping function  ---------- */
+async function scrapeMercadoLibre(query, year, limit = 1) {
+  try {
+    console.log(`🔍 Iniciando búsqueda: ${query} ${year}`);
     
     // Construir URL de búsqueda
     const searchQuery = encodeURIComponent(`${query} ${year}`);
@@ -57,47 +82,28 @@ async function scrapeMercadoLibre(query, year, limit = 1) {
     
     console.log(`🌐 Navegando a: ${url}`);
     
-    // Navegar a la página
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    // Configurar headers para simular navegador
+    const headers = {
+      'User-Agent': getRandomUserAgent(),
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'es-AR,es;q=0.8,en-US;q=0.5,en;q=0.3',
+      'Accept-Encoding': 'gzip, deflate',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+      'Cache-Control': 'max-age=0'
+    };
     
-    // Esperar a que carguen los resultados
-    await page.waitForSelector('[data-testid="results"]', { timeout: 10000 });
+    // Hacer request HTTP
+    const response = await axios.get(url, {
+      headers,
+      timeout: 30000,
+      maxRedirects: 5
+    });
     
-    // Extraer datos de los vehículos
-    const vehicles = await page.evaluate((limit) => {
-      const items = document.querySelectorAll('[data-testid="results"] article');
-      const results = [];
-      
-      for (let i = 0; i < Math.min(items.length, limit); i++) {
-        const item = items[i];
-        
-        try {
-          const titleElement = item.querySelector('h2 a');
-          const priceElement = item.querySelector('[data-testid="price"] span');
-          const locationElement = item.querySelector('[data-testid="location"]');
-          const linkElement = item.querySelector('h2 a');
-          
-          if (titleElement && priceElement) {
-            const title = titleElement.textContent.trim();
-            const price = priceElement.textContent.trim();
-            const location = locationElement ? locationElement.textContent.trim() : '';
-            const link = linkElement ? linkElement.href : '';
-            
-            results.push({
-              title,
-              price,
-              location,
-              link,
-              source: 'MercadoLibre'
-            });
-          }
-        } catch (error) {
-          console.log(`Error procesando item ${i}:`, error.message);
-        }
-      }
-      
-      return results;
-    }, limit);
+    console.log(`✅ Respuesta recibida, status: ${response.status}`);
+    
+    // Extraer datos del HTML
+    const vehicles = extractVehiclesFromHTML(response.data, limit);
     
     console.log(`✅ Encontrados ${vehicles.length} vehículos`);
     return vehicles;
@@ -105,10 +111,6 @@ async function scrapeMercadoLibre(query, year, limit = 1) {
   } catch (error) {
     console.error('❌ Error durante el scraping:', error.message);
     return [];
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
   }
 }
 
