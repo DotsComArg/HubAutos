@@ -36,24 +36,7 @@ async function getCheapestCar(query, year, limit = 1) {
 
     /* 2. Lanzar Chromium ------------------------------------------------ */
     const browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--single-process',
-        '--disable-extensions',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding',
-        '--disable-field-trial-config',
-        '--disable-ipc-flooding-protection',
-        `--user-agent=${pickUA()}`
-      ],
+      args: [...chromium.args, `--user-agent=${pickUA()}`],
       executablePath: await chromium.executablePath(PACK_URL),
       defaultViewport: chromium.defaultViewport,
       headless: chromium.headless,
@@ -63,7 +46,7 @@ async function getCheapestCar(query, year, limit = 1) {
     await page.setExtraHTTPHeaders({ 'accept-language': 'es-AR,es;q=0.9', dnt: '1' });
     await page.setRequestInterception(true);
     page.on('request', r =>
-      ['image', 'media', 'font', 'stylesheet'].includes(r.resourceType()) ? r.abort() : r.continue()
+      ['image', 'media', 'font'].includes(r.resourceType()) ? r.abort() : r.continue()
     );
 
     /* 3. Construir URL -------------------------------------------------- */
@@ -84,104 +67,50 @@ async function getCheapestCar(query, year, limit = 1) {
       .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
 
     const basePath = yearParam ? `${yearParam}/${slug}` : slug;
-    // Usar URL de listado en lugar de autos para evitar detección
-    url = `https://listado.mercadolibre.com.ar/${slug}?sb=all_mercadolibre#D[A:${encodeURIComponent(words.join(' '))}]`;
+    url = `https://autos.mercadolibre.com.ar/${basePath}_OrderId_PRICE_NoIndex_True?sb=category`;
+
+    if (yearParam) {
+      url += `#applied_filter_id=VEHICLE_YEAR&applied_filter_name=A%C3%B1o` +
+             `&applied_filter_order=8&applied_value_id=[${yearParam}-${yearParam}]` +
+             `&applied_value_name=${yearParam}&applied_value_order=2&applied_value_results=0&is_custom=false`;
+    }
     
     console.log('🌐 URL:', url);
 
     /* 4. Scraping ------------------------------------------------------- */
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-    
-    // Esperar un poco para que se cargue todo el contenido
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Verificar si estamos en página de login/cookies
-    const pageContent = await page.evaluate(() => document.body.innerText);
-    console.log('📄 Contenido de la página:', pageContent.substring(0, 200));
-    
-    // Buscar directamente la sección de resultados sin importar las cookies
-    console.log('🔍 Buscando sección ui-search-results...');
-    
-    // Esperar por elementos específicos con timeout más corto
-    try {
-      await page.waitForSelector('section.ui-search-results', { timeout: 10000 });
-      console.log('✅ Encontrado section.ui-search-results');
-    } catch (e) {
-      console.log('⚠️ No se encontró section.ui-search-results, intentando continuar...');
-    }
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.waitForSelector('li.ui-search-layout__item', { timeout: 10000 });
 
-    // Verificar qué elementos existen realmente
-    const debugInfo = await page.evaluate(() => {
-      const selectors = [
-        'section.ui-search-results',
-        'li.ui-search-layout__item',
-        'div.ui-search-result__wrapper', 
-        'a.poly-component__title',
-        '.andes-money-amount__fraction',
-        '.poly-attributes_list__item'
-      ];
-      
-      const results = {};
-      selectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        results[selector] = elements.length;
-      });
-      
-      // También verificar el HTML completo
-      const bodyText = document.body.innerText.substring(0, 500);
-      
-      return { counts: results, bodyPreview: bodyText };
-    });
-    
-    console.log('🔍 Debug - Elementos encontrados:', debugInfo.counts);
-    console.log('📄 Preview del body:', debugInfo.bodyPreview);
-
-    /* --- NUEVO BLOQUE evaluate: buscar directamente en ui-search-results ---------- */
+    /* --- NUEVO BLOQUE evaluate: ajustado para poly-card ----------------- */
     const items = await page.evaluate(() => {
       const toNumber = txt => {
         const m = (txt || '').match(/\d[\d.]*/);
         return m ? +m[0].replace(/\./g, '') : null;
       };
-      
-      // Buscar directamente en la sección de resultados
-      const searchResults = document.querySelector('section.ui-search-results');
-      if (!searchResults) {
-        console.log('❌ No se encontró section.ui-search-results');
-        return [];
-      }
-      
-      // Buscar todos los elementos de resultados dentro de la sección
-      const elements = searchResults.querySelectorAll('li.ui-search-layout__item, div.ui-search-result__wrapper');
-      console.log(`✅ Encontrados ${elements.length} elementos en ui-search-results`);
-      
-      return Array.from(elements)
-        .map(item => {
+      return Array.from(document.querySelectorAll('div.ui-search-result__wrapper'))
+        .map(wrapper => {
+          const card = wrapper.querySelector('.poly-card');
+          if (!card) return null;
           // Título y link
-          const titleAnchor = item.querySelector('a.poly-component__title');
+          const titleAnchor = card.querySelector('a.poly-component__title');
           const title = titleAnchor?.innerText.trim() || '';
           const link = titleAnchor?.href || '';
-          
           // Imagen
-          const img = item.querySelector('img.poly-component__picture');
+          const img = card.querySelector('img.poly-component__picture');
           const image = img?.src || '';
-          
           // Precio y moneda
-          const priceFraction = item.querySelector('.andes-money-amount__fraction')?.innerText.trim() || '';
-          const currency = item.querySelector('.andes-money-amount__currency-symbol')?.innerText.trim() || '';
+          const priceFraction = card.querySelector('.andes-money-amount__fraction')?.innerText.trim() || '';
+          const currency = card.querySelector('.andes-money-amount__currency-symbol')?.innerText.trim() || '';
           const price = toNumber(priceFraction);
-          
           // Año y km
-          const attrs = item.querySelectorAll('.poly-attributes_list__item');
+          const attrs = card.querySelectorAll('.poly-attributes_list__item');
           let year = '', km = '';
           if (attrs.length > 0) year = attrs[0].innerText.trim();
           if (attrs.length > 1) km = attrs[1].innerText.trim();
-          
           // Ubicación
-          const location = item.querySelector('.poly-component__location')?.innerText.trim() || '';
-          
+          const location = card.querySelector('.poly-component__location')?.innerText.trim() || '';
           // Validado
-          const validated = !!item.querySelector('.poly-pill__pill');
-          
+          const validated = !!card.querySelector('.poly-pill__pill');
           return { title, link, image, price, currency, year, km, location, validated };
         })
         .filter(i => i && i.price);
