@@ -1,12 +1,13 @@
 // api/cheapest-car.js
 //
 //  ➜   GET /api/cheapest-car?q=toyota corolla 100000 km&year=2024&limit=1
-//  ➜   Requiere:  npm i puppeteer-core
+//  ➜   Requiere:  npm i puppeteer-core @sparticuz/chromium-min
 // ------------------------------------------------------------------------
 
 const dotenv    = require('dotenv');
 dotenv.config();
 
+const chromium  = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
 let url = '';
 
@@ -30,17 +31,10 @@ async function getCheapestCar(query, year, limit = 1) {
 
     /* 2. Lanzar Chromium ------------------------------------------------ */
     const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        `--user-agent=${pickUA()}`
-      ]
+      args: [...chromium.args, `--user-agent=${pickUA()}`],
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
