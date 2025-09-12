@@ -121,20 +121,18 @@ async function getCheapestCar(query, year, limit = 1) {
       .normalize('NFD').replace(/[^\w\s-]/g, '')
       .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
 
-    // Usar la estructura correcta de MercadoLibre
-    const searchQuery = filteredWords.join(' ');
-    url = `https://listado.mercadolibre.com.ar/autos/_NoIndex_True`;
+    // Usar la estructura correcta de MercadoLibre como en el ejemplo
+    const searchQuery = filteredWords.join(' ').toLowerCase();
+    const slug = searchQuery.replace(/\s+/g, '-');
     
-    // Agregar parámetros de búsqueda correctos
-    const searchParams = new URLSearchParams({
-      'q': searchQuery
-    });
+    // Construir URL en el formato correcto
+    url = `https://listado.mercadolibre.com.ar/${slug}?sb=all_mercadolibre`;
     
+    // Agregar filtro de año si existe
     if (yearParam) {
-      searchParams.append('VEHICLE_YEAR', yearParam);
+      const encodedQuery = encodeURIComponent(searchQuery);
+      url += `#D[A:${encodedQuery}]`;
     }
-    
-    url += `?${searchParams.toString()}`;
     
     console.log('🌐 URL:', url);
 
