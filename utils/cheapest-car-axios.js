@@ -31,39 +31,55 @@ async function getCheapestCarAxios(query, year, limit = 1) {
       return true;
     });
     
-    // Usar la estructura correcta de MercadoLibre
-    const searchQuery = filteredWords.join(' ').toLowerCase();
-    const slug = searchQuery.replace(/\s+/g, '-');
+    // Usar búsqueda más simple para evitar detección
+    const searchQuery = filteredWords.join(' ');
     
-    // Construir URL en el formato correcto
-    let url = `https://listado.mercadolibre.com.ar/${slug}?sb=all_mercadolibre`;
+    // Usar la página de búsqueda general de autos
+    let url = `https://listado.mercadolibre.com.ar/autos`;
     
-    // Agregar filtro de año si existe
+    // Agregar parámetros de búsqueda simples
+    const searchParams = new URLSearchParams({
+      'q': searchQuery
+    });
+    
     if (yearParam) {
-      const encodedQuery = encodeURIComponent(searchQuery);
-      url += `#D[A:${encodedQuery}]`;
+      searchParams.append('VEHICLE_YEAR', yearParam);
     }
+    
+    url += `?${searchParams.toString()}`;
     
     console.log('🌐 URL:', url);
 
     /* 3. Hacer petición HTTP ------------------------------------------- */
+    // Simular navegación más humana - ir primero a la página principal
+    console.log('🏠 Visitando página principal primero...');
+    await axios.get('https://www.mercadolibre.com.ar', {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'es-AR,es;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'max-age=0',
+        'Upgrade-Insecure-Requests': '1'
+      }
+    });
+    
+    // Esperar un poco como humano
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    
+    // Ahora hacer la búsqueda específica
+    console.log('🚗 Haciendo búsqueda específica...');
     const response = await axios.get(url, {
       timeout: 30000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'es-AR,es;q=0.9,en-US;q=0.8,en;q=0.7',
         'Accept-Encoding': 'gzip, deflate, br',
         'Cache-Control': 'max-age=0',
-        'Sec-Ch-Ua': '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"macOS"',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1',
-        'DNT': '1'
+        'Referer': 'https://www.mercadolibre.com.ar',
+        'Upgrade-Insecure-Requests': '1'
       }
     });
 
