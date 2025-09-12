@@ -136,7 +136,7 @@ async function getCheapestCar(query, year, limit = 1) {
     });
     
     // Esperar un poco para que la página cargue completamente
-    await page.waitForTimeout(2000);
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Verificar si estamos en la página de login
     const isLoginPage = await page.evaluate(() => {
@@ -156,7 +156,7 @@ async function getCheapestCar(query, year, limit = 1) {
         waitUntil: 'networkidle2', 
         timeout: 30000 
       });
-      await page.waitForTimeout(3000);
+      await new Promise(resolve => setTimeout(resolve, 3000));
     }
     
     // Verificar el contenido de la página
