@@ -57,11 +57,43 @@ async function getCheapestCar(query, year, limit = 1) {
     const browser = await puppeteer.launch(browserConfig);
 
     const page = await browser.newPage();
-    await page.setExtraHTTPHeaders({ 'accept-language': 'es-AR,es;q=0.9', dnt: '1' });
+    
+    // Configurar headers más realistas para evitar detección de bot
+    await page.setExtraHTTPHeaders({
+      'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+      'accept-language': 'es-AR,es;q=0.9,en;q=0.8',
+      'accept-encoding': 'gzip, deflate, br',
+      'cache-control': 'no-cache',
+      'pragma': 'no-cache',
+      'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"macOS"',
+      'sec-fetch-dest': 'document',
+      'sec-fetch-mode': 'navigate',
+      'sec-fetch-site': 'none',
+      'sec-fetch-user': '?1',
+      'upgrade-insecure-requests': '1'
+    });
+    
+    // Configurar viewport y user agent más realista
+    await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
+    await page.setUserAgent(pickUA());
+    
+    // Interceptar requests pero ser más selectivo
     await page.setRequestInterception(true);
-    page.on('request', r =>
-      ['image', 'media', 'font'].includes(r.resourceType()) ? r.abort() : r.continue()
-    );
+    page.on('request', request => {
+      const resourceType = request.resourceType();
+      const url = request.url();
+      
+      // Bloquear recursos innecesarios pero mantener algunos para parecer más real
+      if (['image', 'media', 'font', 'stylesheet'].includes(resourceType)) {
+        request.abort();
+      } else if (url.includes('google-analytics') || url.includes('googletagmanager') || url.includes('facebook.net')) {
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
 
     /* 3. Construir URL -------------------------------------------------- */
     const tokens = query.trim().split(/\s+/);
@@ -90,22 +122,62 @@ async function getCheapestCar(query, year, limit = 1) {
       .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
 
     const basePath = yearParam ? `${yearParam}/${slug}` : slug;
-    url = `https://autos.mercadolibre.com.ar/${basePath}_OrderId_PRICE_NoIndex_True?sb=category`;
-
-    if (yearParam) {
-      url += `#applied_filter_id=VEHICLE_YEAR&applied_filter_name=A%C3%B1o` +
-             `&applied_filter_order=8&applied_value_id=[${yearParam}-${yearParam}]` +
-             `&applied_value_name=${yearParam}&applied_value_order=2&applied_value_results=0&is_custom=false`;
-    }
+    url = `https://autos.mercadolibre.com.ar/${basePath}`;
     
     console.log('🌐 URL:', url);
 
     /* 4. Scraping ------------------------------------------------------- */
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    console.log('🌐 Navegando a:', url);
+    
+    // Navegar con comportamiento más humano
+    await page.goto(url, { 
+      waitUntil: 'networkidle2', 
+      timeout: 30000 
+    });
+    
+    // Esperar un poco para que la página cargue completamente
+    await page.waitForTimeout(2000);
+    
+    // Verificar si estamos en la página de login
+    const isLoginPage = await page.evaluate(() => {
+      return document.body.innerText.includes('Para continuar, ingresa a') || 
+             document.body.innerText.includes('Soy nuevo') ||
+             document.body.innerText.includes('Ya tengo cuenta');
+    });
+    
+    if (isLoginPage) {
+      console.log('⚠️ Detectada página de login, intentando bypass...');
+      
+      // Intentar navegar directamente a la URL sin parámetros de filtro
+      const cleanUrl = url.split('#')[0];
+      console.log('🔄 Intentando URL limpia:', cleanUrl);
+      
+      await page.goto(cleanUrl, { 
+        waitUntil: 'networkidle2', 
+        timeout: 30000 
+      });
+      await page.waitForTimeout(3000);
+    }
     
     // Verificar el contenido de la página
     const pageContent = await page.evaluate(() => document.body.innerText);
     console.log('📄 Contenido de la página:', pageContent.substring(0, 300));
+    
+    // Verificar si aún estamos en login después del bypass
+    const stillLoginPage = await page.evaluate(() => {
+      return document.body.innerText.includes('Para continuar, ingresa a') || 
+             document.body.innerText.includes('Soy nuevo') ||
+             document.body.innerText.includes('Ya tengo cuenta');
+    });
+    
+    if (stillLoginPage) {
+      await browser.close();
+      return {
+        error: 'MercadoLibre está bloqueando el acceso. Se requiere autenticación.',
+        query: `${query} ${year}`,
+        url: url
+      };
+    }
     
     // Esperar por elementos específicos con timeout más corto
     try {
