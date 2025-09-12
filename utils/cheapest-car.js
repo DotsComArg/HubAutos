@@ -60,40 +60,27 @@ async function getCheapestCar(query, year, limit = 1) {
     
     // Configurar headers más realistas para evitar detección de bot
     await page.setExtraHTTPHeaders({
-      'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-      'accept-language': 'es-AR,es;q=0.9,en;q=0.8',
+      'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+      'accept-language': 'es-AR,es;q=0.9,en-US;q=0.8,en;q=0.7',
       'accept-encoding': 'gzip, deflate, br',
-      'cache-control': 'no-cache',
-      'pragma': 'no-cache',
-      'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+      'cache-control': 'max-age=0',
+      'sec-ch-ua': '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
       'sec-ch-ua-mobile': '?0',
       'sec-ch-ua-platform': '"macOS"',
       'sec-fetch-dest': 'document',
       'sec-fetch-mode': 'navigate',
       'sec-fetch-site': 'none',
       'sec-fetch-user': '?1',
-      'upgrade-insecure-requests': '1'
+      'upgrade-insecure-requests': '1',
+      'dnt': '1'
     });
     
     // Configurar viewport y user agent más realista
-    await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
+    await page.setViewport({ width: 1366, height: 768, deviceScaleFactor: 1 });
     await page.setUserAgent(pickUA());
     
-    // Interceptar requests pero ser más selectivo
-    await page.setRequestInterception(true);
-    page.on('request', request => {
-      const resourceType = request.resourceType();
-      const url = request.url();
-      
-      // Bloquear recursos innecesarios pero mantener algunos para parecer más real
-      if (['image', 'media', 'font', 'stylesheet'].includes(resourceType)) {
-        request.abort();
-      } else if (url.includes('google-analytics') || url.includes('googletagmanager') || url.includes('facebook.net')) {
-        request.abort();
-      } else {
-        request.continue();
-      }
-    });
+    // NO interceptar requests para parecer más humano
+    // await page.setRequestInterception(true);
 
     /* 3. Construir URL -------------------------------------------------- */
     const tokens = query.trim().split(/\s+/);
@@ -134,14 +121,25 @@ async function getCheapestCar(query, year, limit = 1) {
     /* 4. Scraping ------------------------------------------------------- */
     console.log('🌐 Navegando a:', url);
     
-    // Navegar con comportamiento más humano
+    // Simular comportamiento humano - ir primero a la página principal
+    console.log('🏠 Visitando página principal primero...');
+    await page.goto('https://www.mercadolibre.com.ar', { 
+      waitUntil: 'domcontentloaded', 
+      timeout: 15000 
+    });
+    
+    // Esperar un poco como humano
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    
+    // Ahora navegar a la URL específica
+    console.log('🚗 Navegando a búsqueda específica...');
     await page.goto(url, { 
-      waitUntil: 'networkidle2', 
+      waitUntil: 'domcontentloaded', 
       timeout: 30000 
     });
     
     // Esperar un poco para que la página cargue completamente
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000));
     
     // Verificar si estamos en la página de login
     const isLoginPage = await page.evaluate(() => {
