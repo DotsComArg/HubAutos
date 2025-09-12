@@ -121,11 +121,11 @@ async function getCheapestCar(query, year, limit = 1) {
       .normalize('NFD').replace(/[^\w\s-]/g, '')
       .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
 
-    // Usar búsqueda más genérica para evitar detección de bot
+    // Usar la estructura correcta de MercadoLibre
     const searchQuery = filteredWords.join(' ');
-    url = `https://listado.mercadolibre.com.ar/autos/_Desde_1_NoIndex_True`;
+    url = `https://listado.mercadolibre.com.ar/autos/_NoIndex_True`;
     
-    // Agregar parámetros de búsqueda
+    // Agregar parámetros de búsqueda correctos
     const searchParams = new URLSearchParams({
       'q': searchQuery
     });
@@ -234,6 +234,8 @@ async function getCheapestCar(query, year, limit = 1) {
         // Título y link - múltiples selectores
         const titleSelectors = [
           'a.poly-component__title',
+          'h2.poly-component__title-wrapper a',
+          'h3.poly-component__title-wrapper a',
           'a.ui-search-item__title',
           'h2.ui-search-item__title a',
           '.ui-search-item__title'
