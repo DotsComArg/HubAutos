@@ -6,8 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node api/index.js",
-    "dev": "node --watch api/index.js",
-    "test:infoautos": "node test-infoautos.js"
+    "dev": "node --watch api/index.js"
   },
   "keywords": [],
   "author": "",

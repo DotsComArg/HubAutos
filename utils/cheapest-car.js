@@ -24,6 +24,10 @@ const PACK_URL =
   process.env.CHROMIUM_PACK_URL ||
   'https://github.com/Sparticuz/chromium/releases/download/v135.0.0-next.3/chromium-v135.0.0-next.3-pack.x64.tar';
 
+/* ----------  Detectar entorno  ---------- */
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL;
+const isLocal = !isProduction;
+
 /* ====================================================================== */
 /*  Main Function                                                         */
 /* ====================================================================== */
@@ -35,12 +39,22 @@ async function getCheapestCar(query, year, limit = 1) {
     if (!query) return { error: 'Parametro query requerido' };
 
     /* 2. Lanzar Chromium ------------------------------------------------ */
-    const browser = await puppeteer.launch({
+    let browserConfig = {
       args: [...chromium.args, `--user-agent=${pickUA()}`],
-      executablePath: await chromium.executablePath(PACK_URL),
       defaultViewport: chromium.defaultViewport,
       headless: chromium.headless,
-    });
+    };
+
+    // Configuración específica para producción (Vercel)
+    if (isProduction) {
+      browserConfig.executablePath = await chromium.executablePath(PACK_URL);
+    } else {
+      // Configuración para desarrollo local
+      browserConfig.executablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+      browserConfig.headless = true;
+    }
+
+    const browser = await puppeteer.launch(browserConfig);
 
     const page = await browser.newPage();
     await page.setExtraHTTPHeaders({ 'accept-language': 'es-AR,es;q=0.9', dnt: '1' });
@@ -124,56 +138,171 @@ async function getCheapestCar(query, year, limit = 1) {
     
     console.log('🔍 Debug - Elementos encontrados:', debugInfo);
 
-    /* --- NUEVO BLOQUE evaluate: ajustado para poly-card ----------------- */
+    /* --- BLOQUE evaluate: scraping robusto para MercadoLibre ---------- */
     const items = await page.evaluate(() => {
       const toNumber = txt => {
         const m = (txt || '').match(/\d[\d.]*/);
         return m ? +m[0].replace(/\./g, '') : null;
       };
       
-      // Intentar múltiples selectores
-      const selectors = [
+      // Función para extraer datos de un elemento
+      const extractVehicleData = (element) => {
+        // Título y link - múltiples selectores
+        const titleSelectors = [
+          'a.poly-component__title',
+          'a.ui-search-item__title',
+          'h2.ui-search-item__title a',
+          '.ui-search-item__title'
+        ];
+        
+        let titleAnchor = null;
+        let title = '';
+        let link = '';
+        
+        for (const selector of titleSelectors) {
+          titleAnchor = element.querySelector(selector);
+          if (titleAnchor) {
+            title = titleAnchor.innerText?.trim() || '';
+            link = titleAnchor.href || '';
+            break;
+          }
+        }
+        
+        // Imagen - múltiples selectors
+        const imgSelectors = [
+          'img.poly-component__picture',
+          'img.ui-search-result-image__element',
+          '.ui-search-result-image__element img',
+          'img'
+        ];
+        
+        let image = '';
+        for (const selector of imgSelectors) {
+          const img = element.querySelector(selector);
+          if (img && img.src) {
+            image = img.src;
+            break;
+          }
+        }
+        
+        // Precio y moneda - múltiples selectores
+        const priceSelectors = [
+          '.andes-money-amount__fraction',
+          '.price-tag-fraction',
+          '.ui-search-price__part',
+          '.ui-search-price'
+        ];
+        
+        const currencySelectors = [
+          '.andes-money-amount__currency-symbol',
+          '.price-tag-symbol',
+          '.ui-search-price__symbol'
+        ];
+        
+        let priceFraction = '';
+        let currency = '';
+        
+        for (const selector of priceSelectors) {
+          const priceEl = element.querySelector(selector);
+          if (priceEl) {
+            priceFraction = priceEl.innerText?.trim() || '';
+            break;
+          }
+        }
+        
+        for (const selector of currencySelectors) {
+          const currencyEl = element.querySelector(selector);
+          if (currencyEl) {
+            currency = currencyEl.innerText?.trim() || '';
+            break;
+          }
+        }
+        
+        const price = toNumber(priceFraction);
+        
+        // Año y km - múltiples selectores
+        const attrSelectors = [
+          '.poly-attributes_list__item',
+          '.ui-search-item__attributes',
+          '.ui-search-item__subtitle'
+        ];
+        
+        let year = '', km = '';
+        for (const selector of attrSelectors) {
+          const attrs = element.querySelectorAll(selector);
+          if (attrs.length > 0) {
+            year = attrs[0].innerText?.trim() || '';
+            if (attrs.length > 1) km = attrs[1].innerText?.trim() || '';
+            break;
+          }
+        }
+        
+        // Ubicación - múltiples selectores
+        const locationSelectors = [
+          '.poly-component__location',
+          '.ui-search-item__location',
+          '.ui-search-item__subtitle'
+        ];
+        
+        let location = '';
+        for (const selector of locationSelectors) {
+          const locEl = element.querySelector(selector);
+          if (locEl) {
+            location = locEl.innerText?.trim() || '';
+            break;
+          }
+        }
+        
+        // Validado
+        const validatedSelectors = [
+          '.poly-pill__pill',
+          '.ui-search-item__badge',
+          '.ui-search-item__verified'
+        ];
+        
+        let validated = false;
+        for (const selector of validatedSelectors) {
+          if (element.querySelector(selector)) {
+            validated = true;
+            break;
+          }
+        }
+        
+        return { title, link, image, price, currency, year, km, location, validated };
+      };
+      
+      // Intentar múltiples selectores para encontrar elementos de vehículos
+      const containerSelectors = [
         'div.ui-search-result__wrapper',
         'li.ui-search-layout__item',
-        '.ui-search-result__wrapper'
+        '.ui-search-result__wrapper',
+        '.ui-search-layout__item',
+        'article.ui-search-result'
       ];
       
       let elements = [];
-      for (const selector of selectors) {
+      let usedSelector = '';
+      
+      for (const selector of containerSelectors) {
         elements = document.querySelectorAll(selector);
         if (elements.length > 0) {
+          usedSelector = selector;
           console.log(`✅ Usando selector: ${selector} - ${elements.length} elementos`);
           break;
         }
       }
       
-      return Array.from(elements)
-        .map(wrapper => {
-          const card = wrapper.querySelector('.poly-card') || wrapper;
-          if (!card) return null;
-          // Título y link
-          const titleAnchor = card.querySelector('a.poly-component__title');
-          const title = titleAnchor?.innerText.trim() || '';
-          const link = titleAnchor?.href || '';
-          // Imagen
-          const img = card.querySelector('img.poly-component__picture');
-          const image = img?.src || '';
-          // Precio y moneda
-          const priceFraction = card.querySelector('.andes-money-amount__fraction')?.innerText.trim() || '';
-          const currency = card.querySelector('.andes-money-amount__currency-symbol')?.innerText.trim() || '';
-          const price = toNumber(priceFraction);
-          // Año y km
-          const attrs = card.querySelectorAll('.poly-attributes_list__item');
-          let year = '', km = '';
-          if (attrs.length > 0) year = attrs[0].innerText.trim();
-          if (attrs.length > 1) km = attrs[1].innerText.trim();
-          // Ubicación
-          const location = card.querySelector('.poly-component__location')?.innerText.trim() || '';
-          // Validado
-          const validated = !!card.querySelector('.poly-pill__pill');
-          return { title, link, image, price, currency, year, km, location, validated };
-        })
-        .filter(i => i && i.price);
+      if (elements.length === 0) {
+        console.log('❌ No se encontraron elementos de vehículos');
+        return [];
+      }
+      
+      const results = Array.from(elements)
+        .map(extractVehicleData)
+        .filter(item => item && item.title && item.price);
+      
+      console.log(`📊 Extraídos ${results.length} vehículos válidos de ${elements.length} elementos`);
+      return results;
     });
 
     await browser.close();
