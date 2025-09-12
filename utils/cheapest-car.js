@@ -9,6 +9,7 @@ dotenv.config();
 
 const chromium  = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
+const { getCheapestCarAxios } = require('./cheapest-car-axios');
 let url = '';
 
 /* ----------  User-Agent pool  ---------- */
@@ -174,7 +175,20 @@ async function getCheapestCar(query, year, limit = 1) {
     });
     
     if (stillLoginPage) {
+      console.log('🔄 Puppeteer bloqueado, intentando con Axios...');
       await browser.close();
+      
+      // Intentar con axios como fallback
+      try {
+        const axiosResult = await getCheapestCarAxios(query, year, limit);
+        if (axiosResult.success) {
+          console.log('✅ Axios funcionó correctamente');
+          return axiosResult;
+        }
+      } catch (axiosError) {
+        console.log('❌ Axios también falló:', axiosError.message);
+      }
+      
       return {
         error: 'MercadoLibre está bloqueando el acceso. Se requiere autenticación.',
         query: `${query} ${year}`,
@@ -410,6 +424,19 @@ async function getCheapestCar(query, year, limit = 1) {
 
   } catch (err) {
     console.error('❌ Error en getCheapestCar:', err);
+    
+    // Intentar con axios como fallback
+    console.log('🔄 Error en Puppeteer, intentando con Axios...');
+    try {
+      const axiosResult = await getCheapestCarAxios(query, year, limit);
+      if (axiosResult.success) {
+        console.log('✅ Axios funcionó como fallback');
+        return axiosResult;
+      }
+    } catch (axiosError) {
+      console.log('❌ Axios también falló:', axiosError.message);
+    }
+    
     return {
       error: 'Error interno del servidor',
       details: err.message,
