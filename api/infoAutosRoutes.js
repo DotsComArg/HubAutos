@@ -53,7 +53,6 @@ router.get('/debug', async (req, res) => {
 // Obtener años disponibles
 router.get('/years', async (req, res) => {
   try {
-    console.log('📅 Solicitando años disponibles...');
     const years = await infoAutosApi.getYears();
     
     res.json({

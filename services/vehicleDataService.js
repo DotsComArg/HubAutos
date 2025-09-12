@@ -12,15 +12,12 @@ class VehicleDataService {
   // Obtener años disponibles
   async getYears() {
     try {
-      console.log('📅 Obteniendo años desde Info Autos...');
       const years = await this.infoAutosApi.getYears();
-      console.log(`✅ Años obtenidos: ${years.length}`);
       
       if (years && years.length > 0) {
         this.useFallbackForYears = false;
         return years;
       } else {
-        console.log('⚠️ Info Autos devolvió array vacío para años, usando datos de fallback');
         this.useFallbackForYears = true;
         return fallbackData.years;
       }
@@ -34,14 +31,11 @@ class VehicleDataService {
   // Obtener marcas por año
   async getBrands(year) {
     try {
-      console.log(`🏷️ Obteniendo marcas para año ${year} desde Info Autos...`);
       const brands = await this.infoAutosApi.getBrands(year);
-      console.log(`✅ Marcas obtenidas para año ${year}: ${brands.length}`);
       
       if (brands && brands.length > 0) {
         return brands;
       } else {
-        console.log('⚠️ Info Autos devolvió marcas vacías');
         return [];
       }
     } catch (error) {
@@ -53,14 +47,11 @@ class VehicleDataService {
   // Obtener TODAS las marcas disponibles (sin filtrar por año)
   async getAllBrands() {
     try {
-      console.log(`🏷️ Obteniendo TODAS las marcas disponibles desde Info Autos...`);
       const brands = await this.infoAutosApi.getAllBrands();
-      console.log(`✅ Total de marcas obtenidas: ${brands.length}`);
       
       if (brands && brands.length > 0) {
         return brands;
       } else {
-        console.log('⚠️ Info Autos devolvió marcas vacías');
         return [];
       }
     } catch (error) {
@@ -72,14 +63,11 @@ class VehicleDataService {
   // Obtener modelos por marca y año
   async getModels(year, brandId) {
     try {
-      console.log(`🚗 Obteniendo modelos para marca ${brandId} año ${year} desde Info Autos...`);
       const models = await this.infoAutosApi.getModels(year, brandId);
-      console.log(`✅ Modelos obtenidos para marca ${brandId}: ${models.length}`);
       
       if (models && models.length > 0) {
         return models;
       } else {
-        console.log('⚠️ Info Autos devolvió modelos vacíos');
         return [];
       }
     } catch (error) {
@@ -91,14 +79,11 @@ class VehicleDataService {
   // Obtener TODOS los modelos de una marca (sin filtrar por año)
   async getAllModelsForBrand(brandId) {
     try {
-      console.log(`🚗 Obteniendo TODOS los modelos para marca ${brandId} desde Info Autos...`);
       const models = await this.infoAutosApi.getAllModelsForBrand(brandId);
-      console.log(`✅ Total de modelos obtenidos para marca ${brandId}: ${models.length}`);
       
       if (models && models.length > 0) {
         return models;
       } else {
-        console.log('⚠️ Info Autos devolvió modelos vacíos');
         return [];
       }
     } catch (error) {
@@ -117,7 +102,6 @@ class VehicleDataService {
       if (models && models.length > 0) {
         return models;
       } else {
-        console.log('⚠️ Info Autos devolvió modelos vacíos con price_at');
         return [];
       }
     } catch (error) {
@@ -129,14 +113,11 @@ class VehicleDataService {
   // Obtener versiones por modelo, marca (sin filtrar por año)
   async getVersions(brandId, modelId) {
     try {
-      console.log(`🔧 Obteniendo versiones para modelo ${modelId} marca ${brandId} desde Info Autos...`);
       const versions = await this.infoAutosApi.getVersions(brandId, modelId);
-      console.log(`✅ Versiones obtenidas para modelo ${modelId}: ${versions.length}`);
       
       if (versions && versions.length > 0) {
         return versions;
       } else {
-        console.log('⚠️ Info Autos devolvió versiones vacías');
         return [];
       }
     } catch (error) {
@@ -148,7 +129,6 @@ class VehicleDataService {
   // Obtener versiones por modelo, marca y año específico
   async getVersionsByYear(brandId, modelId, year) {
     try {
-      console.log(`🔧 Obteniendo versiones para modelo ${modelId} marca ${brandId} año ${year} desde Info Autos...`);
       
       // Obtener todas las versiones del modelo
       const allVersions = await this.infoAutosApi.getVersions(brandId, modelId);
@@ -207,7 +187,6 @@ class VehicleDataService {
   // Obtener TODAS las versiones de un grupo de modelo (sin filtrar por año)
   async getAllVersionsForGroup(brandId, groupId) {
     try {
-      console.log(`🔧 Obteniendo TODAS las versiones para grupo ${groupId} de marca ${brandId} desde Info Autos...`);
       
       // Obtener todas las versiones del grupo
       const allVersions = await this.infoAutosApi.getVersions(brandId, groupId);
@@ -267,7 +246,6 @@ class VehicleDataService {
   // Forzar uso de fallback para años
   forceFallbackForYears() {
     this.useFallbackForYears = true;
-    console.log('🔄 Forzando uso de datos de fallback para años');
   }
 }
 

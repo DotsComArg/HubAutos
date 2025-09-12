@@ -43,7 +43,6 @@ router.get('/health', async (req, res) => {
 // Obtener años disponibles
 router.get('/years', async (req, res) => {
   try {
-    console.log('📅 Solicitando años disponibles...');
     
     // Refrescar tokens si es necesario
     await vehicleService.refreshTokensIfNeeded();
