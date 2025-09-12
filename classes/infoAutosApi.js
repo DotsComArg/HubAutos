@@ -40,17 +40,14 @@ class InfoAutosApi {
   async ensureValidToken() {
     // Si el token está expirado o por expirar, renovarlo
     if (this.isTokenExpired()) {
-      console.log('🔄 Token expirado o por expirar, renovando...');
       
       // Si ya estamos refrescando, esperar a que termine
       if (this.isRefreshing) {
-        console.log('⏳ Ya se está renovando el token, esperando...');
         return this.refreshPromise;
       }
 
       // Si ya estamos haciendo login, esperar a que termine
       if (this.isLoggingIn) {
-        console.log('⏳ Ya se está haciendo login, esperando...');
         return this.loginPromise;
       }
 
@@ -60,13 +57,11 @@ class InfoAutosApi {
       
       try {
         await this.refreshPromise;
-        console.log('✅ Token renovado exitosamente');
       } finally {
         this.isRefreshing = false;
         this.refreshPromise = null;
       }
     } else {
-      console.log('✅ Usando token existente válido');
     }
   }
 
@@ -86,10 +81,7 @@ class InfoAutosApi {
         }
       };
 
-      console.log(`🌐 Llamando a Info Autos: ${url}`);
       const response = await axios.get(url, config);
-      
-      console.log(`✅ Respuesta exitosa de Info Autos: ${response.status}`);
       
       // Si se solicitan headers, devolver tanto datos como headers
       if (getHeaders) {
@@ -103,7 +95,6 @@ class InfoAutosApi {
     } catch (error) {
       // Si es error 401, intentar renovar el token y reintentar
       if (error.response?.status === 401) {
-        console.log('🔄 Error 401, intentando renovar token y reintentar...');
         
         try {
           await this.refreshAccessToken();
@@ -119,7 +110,6 @@ class InfoAutosApi {
           };
           
           const retryResponse = await axios.get(`${this.baseURL}${endpoint}`, retryConfig);
-          console.log(`✅ Reintento exitoso: ${retryResponse.status}`);
           
           // Si se solicitan headers, devolver tanto datos como headers
           if (getHeaders) {
@@ -151,7 +141,6 @@ class InfoAutosApi {
       });
 
       if (!brands || !Array.isArray(brands)) {
-        console.log('⚠️ Respuesta de brands no válida');
         return [];
       }
 
@@ -190,7 +179,6 @@ class InfoAutosApi {
       });
 
       if (!brands || !Array.isArray(brands)) {
-        console.log('⚠️ Respuesta de brands no válida');
         return [];
       }
 
@@ -218,7 +206,6 @@ class InfoAutosApi {
   // Obtener TODAS las marcas disponibles (sin filtrar por año)
   async getAllBrands() {
     try {
-      console.log(`🏷️ Obteniendo TODAS las marcas disponibles...`);
       
       let allBrands = [];
       let currentPage = 1;
@@ -241,7 +228,6 @@ class InfoAutosApi {
           try {
             const paginationInfo = JSON.parse(firstResponse.headers['x-pagination']);
             totalPages = paginationInfo.total_pages;
-            console.log(`📊 Paginación detectada: ${totalPages} páginas, ${paginationInfo.total} marcas totales`);
           } catch (parseError) {
             console.warn('⚠️ No se pudo parsear header de paginación:', parseError);
           }
@@ -250,7 +236,6 @@ class InfoAutosApi {
         // Obtener páginas restantes
         while (currentPage < totalPages) {
           currentPage++;
-          console.log(`📄 Obteniendo página ${currentPage} de ${totalPages}...`);
           
           try {
             const nextPageData = await this.makeRequest('/brands/', {
@@ -263,7 +248,6 @@ class InfoAutosApi {
             
             if (nextPageData && Array.isArray(nextPageData)) {
               allBrands = allBrands.concat(nextPageData);
-              console.log(`✅ Página ${currentPage} obtenida: ${nextPageData.length} marcas`);
             }
             
             // Rate limiting - esperar 100ms entre requests
@@ -277,11 +261,9 @@ class InfoAutosApi {
       }
 
       if (!allBrands || !Array.isArray(allBrands)) {
-        console.log('⚠️ Respuesta de brands no válida');
         return [];
       }
 
-      console.log(`📊 Total de marcas obtenidas: ${allBrands.length}`);
 
       // Convertir a formato esperado por el frontend (sin filtrar por año)
       const result = allBrands.map(brand => ({
@@ -289,7 +271,6 @@ class InfoAutosApi {
         name: brand.name
       }));
 
-      console.log(`✅ Marcas únicas disponibles:`, result.length);
       return result;
 
     } catch (error) {
@@ -301,14 +282,12 @@ class InfoAutosApi {
   // Obtener modelos por marca y año - Usar /brands/{brand_id}/models/ CON PAGINACIÓN
   async getModels(year, brandId) {
     try {
-      console.log(`🚗 Obteniendo modelos para marca ${brandId} año ${year}...`);
       
       let allModels = [];
       let currentPage = 1;
       let totalPages = 1;
       
       // Primera llamada para obtener información de paginación
-      console.log(`📄 Obteniendo página ${currentPage} para detectar paginación...`);
       const firstResponse = await this.makeRequest(`/brands/${brandId}/models/`, {
         query_mode: 'matching',
         page: currentPage,
@@ -316,38 +295,28 @@ class InfoAutosApi {
       }, true);
       
       if (!firstResponse.data || !Array.isArray(firstResponse.data)) {
-        console.log('⚠️ Primera página: respuesta no válida');
         return [];
       }
       
       // Agregar modelos de la primera página
       allModels = allModels.concat(firstResponse.data);
-      console.log(`✅ Página ${currentPage}: ${firstResponse.data.length} modelos. Total acumulado: ${allModels.length} modelos`);
       
       // Extraer información de paginación del header x-pagination
-      console.log(`🔍 Headers disponibles:`, Object.keys(firstResponse.headers));
-      console.log(`🔍 Header x-pagination:`, firstResponse.headers['x-pagination']);
       
       if (firstResponse.headers && firstResponse.headers['x-pagination']) {
         try {
           const paginationInfo = JSON.parse(firstResponse.headers['x-pagination']);
           totalPages = paginationInfo.total_pages;
-          console.log(`📚 Paginación detectada: ${totalPages} páginas, ${paginationInfo.total} modelos totales`);
         } catch (parseError) {
-          console.log('⚠️ Error parseando información de paginación, continuando...');
-          console.log('⚠️ Contenido del header:', firstResponse.headers['x-pagination']);
         }
       } else {
-        console.log('⚠️ No se encontró header x-pagination, asumiendo 1 página');
       }
       
       // Si hay más páginas, procesarlas
       if (totalPages > 1) {
-        console.log(`🔄 Procesando ${totalPages - 1} páginas adicionales...`);
         
         for (let page = 2; page <= totalPages; page++) {
           try {
-            console.log(`📄 Obteniendo página ${page} de ${totalPages}...`);
             
             const response = await this.makeRequest(`/brands/${brandId}/models/`, {
               query_mode: 'matching',
@@ -357,9 +326,6 @@ class InfoAutosApi {
             
             if (response && Array.isArray(response)) {
               allModels = allModels.concat(response);
-              console.log(`✅ Página ${page}: ${response.length} modelos. Total acumulado: ${allModels.length} modelos`);
-            } else {
-              console.log(`⚠️ Página ${page}: respuesta no válida`);
             }
             
             // Delay entre páginas para respetar rate limiting
@@ -374,8 +340,6 @@ class InfoAutosApi {
         }
       }
       
-      console.log(`🎯 Procesamiento de páginas completado. Total de modelos: ${allModels.length}`);
-      console.log(`📊 Páginas procesadas: ${totalPages}, Total esperado: ${totalPages}`);
 
       // FILTRADO PRINCIPAL: Solo modelos que realmente salieron en el año especificado
       const filteredModels = allModels.filter(model => {
@@ -406,12 +370,9 @@ class InfoAutosApi {
         return false;
       });
 
-      console.log(`📊 Modelos que realmente salieron en ${year}:`, filteredModels.length);
 
       // Si no hay modelos para ese año específico, mostrar mensaje informativo
       if (filteredModels.length === 0) {
-        console.log(`⚠️ No se encontraron modelos de la marca ${brandId} que hayan salido en ${year}`);
-        console.log(`💡 Esto puede indicar que la marca no produjo modelos en ese año específico`);
         return [];
       }
 
@@ -437,7 +398,6 @@ class InfoAutosApi {
         name: model.name
       }));
 
-      console.log(`✅ Modelos únicos confirmados para marca ${brandId} año ${year}:`, result.length);
       return result;
 
     } catch (error) {
@@ -449,14 +409,12 @@ class InfoAutosApi {
   // Obtener TODOS los modelos de una marcasdasda (sin filtrar por año) - CORREGIDO
   async getAllModelsForBrand(brandId) {
     try {
-      console.log(`🚗 Obteniendo TODOS los modelos para marca ${brandId} (sin filtrar por año)...`);
       
       let allModels = [];
       let currentPage = 1;
       let totalPages = 1;
       
       // Primera llamada para obtener información de paginación
-      console.log(`📄 Obteniendo página ${currentPage} para detectar paginación...`);
       const firstResponse = await this.makeRequest(`/brands/${brandId}/models/`, {
         query_mode: 'matching',
         page: currentPage,
@@ -464,20 +422,17 @@ class InfoAutosApi {
       }, true);
       
       if (!firstResponse.data || !Array.isArray(firstResponse.data)) {
-        console.log('⚠️ Primera página: respuesta no válida');
         return [];
       }
       
       // Agregar modelos de la primera página
       allModels = allModels.concat(firstResponse.data);
-      console.log(`✅ Página ${currentPage}: ${firstResponse.data.length} modelos. Total acumulado: ${allModels.length} modelos`);
       
       // Extraer información de paginación del header x-pagination
       if (firstResponse.headers && firstResponse.headers['x-pagination']) {
         try {
           const paginationInfo = JSON.parse(firstResponse.headers['x-pagination']);
           totalPages = paginationInfo.total_pages;
-          console.log(`📚 Paginación detectada: ${totalPages} páginas, ${paginationInfo.total} modelos totales`);
         } catch (parseError) {
           console.log('⚠️ Error parseando información de paginación, continuando...');
         }
@@ -485,11 +440,9 @@ class InfoAutosApi {
       
       // Si hay más páginas, procesarlas
       if (totalPages > 1) {
-        console.log(`🔄 Procesando ${totalPages - 1} páginas adicionales...`);
         
         for (let page = 2; page <= totalPages; page++) {
           try {
-            console.log(`📄 Obteniendo página ${page} de ${totalPages}...`);
             
             const response = await this.makeRequest(`/brands/${brandId}/models/`, {
               query_mode: 'matching',
@@ -499,9 +452,6 @@ class InfoAutosApi {
             
             if (response && Array.isArray(response)) {
               allModels = allModels.concat(response);
-              console.log(`✅ Página ${page}: ${response.length} modelos. Total acumulado: ${allModels.length} modelos`);
-            } else {
-              console.log(`⚠️ Página ${page}: respuesta no válida`);
             }
             
             // Delay entre páginas para respetar rate limiting
@@ -516,8 +466,6 @@ class InfoAutosApi {
         }
       }
       
-      console.log(`🎯 Procesamiento de páginas completado. Total de modelos: ${allModels.length}`);
-      console.log(`📊 Páginas procesadas: ${totalPages}, Total esperado: ${totalPages}`);
 
       // Agrupar modelos por grupo base para evitar duplicados (sin filtrar por año)
       const groupedModels = new Map();
@@ -574,7 +522,6 @@ class InfoAutosApi {
       // ✅ DEVOLVER MODELOS COMPLETOS CON TODA LA INFORMACIÓN
       const result = Array.from(groupedModels.values());
 
-      console.log(`✅ Modelos únicos agrupados para marca ${brandId} (sin filtrar por año):`, result.length);
       return result;
 
     } catch (error) {
@@ -586,14 +533,12 @@ class InfoAutosApi {
   // Obtener TODAS las versiones de un modelo (sin filtrar por año) - CORREGIDO
   async getVersions(brandId, modelId) {
     try {
-      console.log(`🔧 Obteniendo TODAS las versiones para grupo ${modelId} de marca ${brandId}...`);
       
       let allVersions = [];
       let currentPage = 1;
       let totalPages = 1;
       
       // Primera llamada para obtener información de paginación
-      console.log(`📄 Obteniendo página ${currentPage} de versiones para detectar paginación...`);
       const firstResponse = await this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
         query_mode: 'matching',
         page: currentPage,
@@ -601,38 +546,28 @@ class InfoAutosApi {
       }, true);
       
       if (!firstResponse.data || !Array.isArray(firstResponse.data)) {
-        console.log('⚠️ Primera página de versiones: respuesta no válida');
         return [];
       }
       
       // Agregar versiones de la primera página
       allVersions = allVersions.concat(firstResponse.data);
-      console.log(`✅ Página ${currentPage} de versiones: ${firstResponse.data.length} versiones. Total acumulado: ${allVersions.length} versiones`);
       
       // Extraer información de paginación del header x-pagination
-      console.log(`🔍 Headers disponibles:`, Object.keys(firstResponse.headers));
-      console.log(`🔍 Header x-pagination:`, firstResponse.headers['x-pagination']);
       
       if (firstResponse.headers && firstResponse.headers['x-pagination']) {
         try {
           const paginationInfo = JSON.parse(firstResponse.headers['x-pagination']);
           totalPages = paginationInfo.total_pages;
-          console.log(`📚 Paginación detectada para versiones: ${totalPages} páginas, ${paginationInfo.total} versiones totales`);
         } catch (parseError) {
-          console.log('⚠️ Error parseando información de paginación, continuando...');
-          console.log('⚠️ Contenido del header:', firstResponse.headers['x-pagination']);
         }
       } else {
-        console.log('⚠️ No se encontró header x-pagination, asumiendo 1 página');
       }
       
       // Si hay más páginas, procesarlas
       if (totalPages > 1) {
-        console.log(`🔄 Procesando ${totalPages - 1} páginas adicionales de versiones...`);
         
         for (let page = 2; page <= totalPages; page++) {
           try {
-            console.log(`📄 Obteniendo página ${page} de ${totalPages} de versiones...`);
             
             const response = await this.makeRequest(`/brands/${brandId}/groups/${modelId}/models/`, {
               query_mode: 'matching',
@@ -642,9 +577,6 @@ class InfoAutosApi {
             
             if (response && Array.isArray(response)) {
               allVersions = allVersions.concat(response);
-              console.log(`✅ Página ${page} de versiones: ${response.length} versiones. Total acumulado: ${allVersions.length} versiones`);
-            } else {
-              console.log(`⚠️ Página ${page} de versiones: respuesta no válida`);
             }
             
             // Delay entre páginas para respetar rate limiting
@@ -659,8 +591,6 @@ class InfoAutosApi {
         }
       }
       
-      console.log(`🎯 Procesamiento de páginas de versiones completado. Total de versiones: ${allVersions.length}`);
-      console.log(`📊 Páginas procesadas: ${totalPages}, Total esperado: ${totalPages}`);
 
       // ✅ DEVOLVER VERSIONES COMPLETAS CON TODA LA INFORMACIÓN
       const formattedVersions = allVersions.map(version => {
@@ -700,7 +630,6 @@ class InfoAutosApi {
         };
       });
 
-      console.log(`🔧 Versiones finales para grupo ${modelId} (sin filtrar por año):`, formattedVersions.length);
       
       if (formattedVersions.length === 0) {
         console.log(`⚠️ No se encontraron versiones para grupo ${modelId}, usando fallback`);
@@ -806,7 +735,6 @@ class InfoAutosApi {
       
       // Si ya estamos haciendo login, esperar a que termine
       if (this.isLoggingIn) {
-        console.log('⏳ Ya se está haciendo login, esperando...');
         return this.loginPromise;
       }
 
