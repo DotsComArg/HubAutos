@@ -116,11 +116,6 @@ async function getCheapestCar(query, year, limit = 1) {
       return true;
     });
     
-    const slug  = filteredWords.join(' ')
-      .toLowerCase()
-      .normalize('NFD').replace(/[^\w\s-]/g, '')
-      .trim().replace(/\s+/g, '-').replace(/-+/g, '-');
-
     // Usar la estructura correcta de MercadoLibre como en el ejemplo
     const searchQuery = filteredWords.join(' ').toLowerCase();
     const slug = searchQuery.replace(/\s+/g, '-');
