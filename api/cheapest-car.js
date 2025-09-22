@@ -1,7 +1,7 @@
 // api/cheapest-car.js
 //
 //  ➜   GET /api/cheapest-car?q=toyota corolla 100000 km&year=2024&limit=1
-//  ➜   Requiere:  npm i puppeteer-core@24.2.0 @sparticuz/chromium-min@124
+//  ➜   Usa Apify Actor para scraping de MercadoLibre
 // ------------------------------------------------------------------------
 
 const { getCheapestCar } = require('../utils/cheapest-car.js');
