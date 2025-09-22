@@ -185,54 +185,19 @@ async function processKommoLead(data) {
       console.log(`✅ Contacto y lead ${idLead} creados desde cero`);
     }
 
-    // Iniciar cotización INMEDIATAMENTE si tenemos un lead ID
+    // TEMPORALMENTE DESACTIVADO - Apify y notas
     if (idLead) {
-      console.log("🚀 Iniciando cotización INMEDIATA para lead:", idLead);
+      console.log("⏸️ Apify y cotización TEMPORALMENTE DESACTIVADOS para ajustes");
+      console.log("✅ Lead creado/actualizado exitosamente:", idLead);
       
+      // TODO: Reactivar cuando termines los ajustes del scraper
+      /*
       // Ejecutar cotización en paralelo (no bloquear respuesta)
       processQuote(mappedData)
         .then(async (quoteResult) => {
-          try {
-            if (quoteResult.success) {
-              // Agregar nota con cotizaciones
-              await kommoApiClientWordpress.addNoteToLead(idLead, quoteResult.data.note);
-              
-              // Actualizar campos personalizados
-              if (quoteResult.data.leadUpdate) {
-                await kommoApiClientWordpress.updateLead(idLead, quoteResult.data.leadUpdate);
-              }
-              
-              console.log("✅ Cotización procesada exitosamente");
-            } else {
-              console.log("❌ Error en cotización:", quoteResult.error);
-              // Agregar nota de error
-              const errorNote = [{
-                note_type: "common",
-                params: {
-                  text: `[Error en Cotización]\n\n❌ ${quoteResult.error}\n\nNo se pudieron obtener cotizaciones automáticas.`
-                }
-              }];
-              await kommoApiClientWordpress.addNoteToLead(idLead, errorNote);
-            }
-          } catch (noteError) {
-            console.error("❌ Error al agregar nota:", noteError);
-          }
-        })
-        .catch((quoteError) => {
-          console.error("❌ Error al procesar cotización:", quoteError);
-          
-          // Agregar nota de error crítico
-          kommoApiClientWordpress.addNoteToLead(idLead, [{
-            note_type: "common",
-            params: {
-              text: `[Error Crítico en Cotización]\n\n❌ Error interno: ${quoteError.message}\n\nNo se pudieron obtener cotizaciones automáticas.`
-            }
-          }]).catch(noteError => {
-            console.error("❌ Error al agregar nota de error:", noteError);
-          });
+          // ... código de cotización comentado temporalmente
         });
-      
-      console.log("✅ Cotización iniciada inmediatamente en paralelo");
+      */
     }
 
     return idLead;
