@@ -354,14 +354,23 @@ class ApifyService {
         titleLower.includes(keyword) || subtitleLower.includes(keyword)
       );
       
-      // Es un auto si no tiene palabras de repuestos Y tiene palabras de vehículo
-      return !hasPartsKeywords && hasVehicleKeywords;
+      // Es un auto si no tiene palabras de repuestos (relajar filtro temporalmente)
+      // return !hasPartsKeywords && hasVehicleKeywords;
+      return !hasPartsKeywords; // Solo filtrar repuestos, no exigir palabras de vehículo
     };
 
+    console.log(`📊 Total resultados de Apify: ${results.length}`);
+    
     const processedVehicles = results
       .filter(item => {
         // Filtrar solo autos completos, no repuestos
-        return isCompleteVehicle(item.title, item.subtitle);
+        const isVehicle = isCompleteVehicle(item.title, item.subtitle);
+        if (!isVehicle) {
+          console.log(`🚫 Filtrado (repuesto): ${item.title}`);
+        } else {
+          console.log(`✅ Aceptado (auto): ${item.title}`);
+        }
+        return isVehicle;
       })
       .map(item => {
         // Mapear los campos del resultado de Apify a nuestro formato
