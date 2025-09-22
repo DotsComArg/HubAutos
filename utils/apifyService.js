@@ -250,7 +250,14 @@ class ApifyService {
         return true;
       });
       
-      const searchQuery = filteredWords.join(' ').toLowerCase();
+      // Limpiar y formatear el query para Apify (sin puntos, comas, barras)
+      let searchQuery = filteredWords.join(' ')
+        .toLowerCase()
+        .replace(/[.,\/\\]/g, '') // Eliminar puntos, comas y barras
+        .replace(/\s+/g, '-')     // Reemplazar espacios con guiones
+        .replace(/[^\w-]/g, '')   // Eliminar caracteres especiales
+        .replace(/-+/g, '-')      // Eliminar guiones múltiples
+        .replace(/^-|-$/g, '');   // Eliminar guiones al inicio/final
       const slug = searchQuery.replace(/\s+/g, '-');
       
       console.log('🔍 Query de búsqueda para Apify:', searchQuery);
@@ -258,7 +265,7 @@ class ApifyService {
       // Usar el endpoint síncrono con search directo (como funciona en Apify)
       const results = await this.runActorSync({
         search: searchQuery, // Usar search directo en lugar de startUrls
-        maxItemCount: 5, // Usar el mismo valor que funciona en Apify
+        maxItemCount: 3, // Usar el mismo valor que funciona en tu ejemplo
         domainCode: "AR", // Argentina, no México
         sortBy: "relevance",
         debugMode: false,
