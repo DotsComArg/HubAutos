@@ -266,19 +266,25 @@ class ApifyService {
       
       console.log('🔍 Query de búsqueda para Apify:', searchQuery);
 
-      // Usar el endpoint síncrono con search directo (como funciona en Apify)
-      const results = await this.runActorSync({
-        search: searchQuery, // Usar search directo en lugar de startUrls
-        maxItemCount: 3, // Usar el mismo valor que funciona en tu ejemplo
-        domainCode: "AR", // Argentina, no México
-        sortBy: "relevance",
+      // Construir input EXACTO como en la web de Apify
+      const apifyInput = {
+        // Orden EXACTO como en la web de Apify
         debugMode: false,
+        domainCode: "AR",
         fastMode: false,
+        maxItemCount: 3,
         proxy: {
           useApifyProxy: true,
           apifyProxyGroups: ["RESIDENTIAL"]
-        }
-      });
+        },
+        search: searchQuery,
+        sortBy: "relevance"
+      };
+
+      console.log('📤 Input enviado a Apify:', JSON.stringify(apifyInput, null, 2));
+
+      // Usar el endpoint síncrono con search directo (EXACTO como funciona en Apify web)
+      const results = await this.runActorSync(apifyInput);
 
       // Procesar resultados
       const processedResults = this.processVehicleResults(results, limit);
