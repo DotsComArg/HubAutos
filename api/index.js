@@ -185,35 +185,54 @@ async function processKommoLead(data) {
       console.log(`✅ Contacto y lead ${idLead} creados desde cero`);
     }
 
-    // Procesar cotización automática si tenemos un lead ID
+    // Programar cotización asíncrona si tenemos un lead ID
     if (idLead) {
-      try {
-        console.log("💰 Iniciando cotización automática para lead:", idLead);
-        const quoteResult = await processQuote(mappedData);
-        
-        if (quoteResult.success) {
-          // Agregar nota con cotizaciones
-          await kommoApiClientWordpress.addNoteToLead(idLead, quoteResult.data.note);
+      console.log("💰 Programando cotización asíncrona para lead:", idLead);
+      
+      // Enviar cotización de forma asíncrona (no esperar respuesta)
+      setImmediate(async () => {
+        try {
+          console.log("🚀 Iniciando cotización asíncrona para lead:", idLead);
+          const quoteResult = await processQuote(mappedData);
           
-          // Actualizar campos personalizados
-          await kommoApiClientWordpress.updateLead(idLead, quoteResult.data.leadUpdate);
+          if (quoteResult.success) {
+            // Agregar nota con cotizaciones
+            await kommoApiClientWordpress.addNoteToLead(idLead, quoteResult.data.note);
+            
+            // Actualizar campos personalizados
+            await kommoApiClientWordpress.updateLead(idLead, quoteResult.data.leadUpdate);
+            
+            console.log("✅ Cotización asíncrona procesada exitosamente");
+          } else {
+            console.log("❌ Error en cotización asíncrona:", quoteResult.error);
+            // Agregar nota de error
+            const errorNote = [{
+              note_type: "common",
+              params: {
+                text: `[Error en Cotización]\n\n❌ ${quoteResult.error}\n\nNo se pudieron obtener cotizaciones automáticas.`
+              }
+            }];
+            await kommoApiClientWordpress.addNoteToLead(idLead, errorNote);
+          }
+        } catch (quoteError) {
+          console.error("❌ Error al procesar cotización asíncrona:", quoteError);
           
-          console.log("✅ Cotización procesada exitosamente");
-        } else {
-          console.log("❌ Error en cotización:", quoteResult.error);
-          // Agregar nota de error
-          const errorNote = [{
-            note_type: "common",
-            params: {
-              text: `[Error en Cotización]\n\n❌ ${quoteResult.error}\n\nNo se pudieron obtener cotizaciones automáticas.`
-            }
-          }];
-          await kommoApiClientWordpress.addNoteToLead(idLead, errorNote);
+          // Agregar nota de error crítico
+          try {
+            const criticalErrorNote = [{
+              note_type: "common",
+              params: {
+                text: `[Error Crítico en Cotización]\n\n❌ Error interno: ${quoteError.message}\n\nNo se pudieron obtener cotizaciones automáticas.`
+              }
+            }];
+            await kommoApiClientWordpress.addNoteToLead(idLead, criticalErrorNote);
+          } catch (noteError) {
+            console.error("❌ Error al agregar nota de error:", noteError);
+          }
         }
-      } catch (quoteError) {
-        console.error("❌ Error al procesar cotización:", quoteError);
-        // No fallamos todo el proceso si la cotización falla
-      }
+      });
+      
+      console.log("✅ Cotización programada para procesamiento asíncrono");
     }
 
     return idLead;
@@ -264,6 +283,87 @@ app.post("/api/auto-quote", async (req, res) => {
   } catch (error) {
     console.error("❌ Error al procesar la solicitud:", error);
     res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// Endpoint para procesar cotización manualmente (backup)
+app.post("/api/process-quote", async (req, res) => {
+  try {
+    console.log("🚀 POST /api/process-quote - Procesando cotización manual");
+    console.log("📊 Datos recibidos:", JSON.stringify(req.body, null, 2));
+    
+    if (!req.body || !req.body.leadId) {
+      return res.status(400).json({ 
+        success: false,
+        error: "leadId es requerido" 
+      });
+    }
+    
+    const { leadId, vehicleData } = req.body;
+    
+    if (!vehicleData) {
+      return res.status(400).json({ 
+        success: false,
+        error: "vehicleData es requerido" 
+      });
+    }
+    
+    console.log("💰 Procesando cotización para lead:", leadId);
+    const quoteResult = await processQuote(vehicleData);
+    
+    if (quoteResult.success) {
+      // Crear cliente de Kommo
+      const kommoApiClientWordpress = new KommoApiClient(
+        process.env.SUBDOMAIN_KOMMO,
+        process.env.TOKEN_KOMMO_FORM
+      );
+      
+      // Agregar nota con cotizaciones
+      await kommoApiClientWordpress.addNoteToLead(leadId, quoteResult.data.note);
+      
+      // Actualizar campos personalizados
+      if (quoteResult.data.leadUpdate) {
+        await kommoApiClientWordpress.updateLead(leadId, quoteResult.data.leadUpdate);
+      }
+      
+      console.log("✅ Cotización manual procesada exitosamente");
+      
+      res.json({
+        success: true,
+        message: "Cotización procesada exitosamente",
+        leadId: leadId,
+        data: quoteResult.data
+      });
+    } else {
+      console.log("❌ Error en cotización manual:", quoteResult.error);
+      
+      // Crear cliente de Kommo para agregar nota de error
+      const kommoApiClientWordpress = new KommoApiClient(
+        process.env.SUBDOMAIN_KOMMO,
+        process.env.TOKEN_KOMMO_FORM
+      );
+      
+      const errorNote = [{
+        note_type: "common",
+        params: {
+          text: `[Error en Cotización Manual]\n\n❌ ${quoteResult.error}\n\nNo se pudieron obtener cotizaciones automáticas.`
+        }
+      }];
+      await kommoApiClientWordpress.addNoteToLead(leadId, errorNote);
+      
+      res.status(400).json({
+        success: false,
+        error: quoteResult.error,
+        leadId: leadId
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error al procesar cotización manual:", error);
+    res.status(500).json({ 
+      success: false,
+      error: "Error interno del servidor",
+      details: error.message
+    });
   }
 });
 
