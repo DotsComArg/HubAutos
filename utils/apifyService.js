@@ -250,14 +250,13 @@ class ApifyService {
         return true;
       });
       
-      // Limpiar y formatear el query para Apify (sin puntos, comas, barras)
+      // Limpiar y formatear el query para Apify (mantener espacios, sin caracteres especiales)
       let searchQuery = filteredWords.join(' ')
         .toLowerCase()
         .replace(/[.,\/\\]/g, '') // Eliminar puntos, comas y barras
-        .replace(/\s+/g, '-')     // Reemplazar espacios con guiones
-        .replace(/[^\w-]/g, '')   // Eliminar caracteres especiales
-        .replace(/-+/g, '-')      // Eliminar guiones múltiples
-        .replace(/^-|-$/g, '');   // Eliminar guiones al inicio/final
+        .replace(/[^\w\s]/g, '')  // Eliminar caracteres especiales pero mantener espacios
+        .replace(/\s+/g, ' ')     // Normalizar espacios múltiples a uno solo
+        .trim();                  // Eliminar espacios al inicio/final
       const slug = searchQuery.replace(/\s+/g, '-');
       
       console.log('🔍 Query de búsqueda para Apify:', searchQuery);
