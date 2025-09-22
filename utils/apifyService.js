@@ -249,15 +249,17 @@ class ApifyService {
       const searchQuery = filteredWords.join(' ').toLowerCase();
       const slug = searchQuery.replace(/\s+/g, '-');
       
-      // Usar URL simple sin filtros adicionales para mejor compatibilidad
-      const url = `https://listado.mercadolibre.com.ar/${slug}`;
+      // Usar URL específica para autos y camionetas en Argentina
+      const url = `https://listado.mercadolibre.com.ar/autos-camionetas-${slug}`;
 
       console.log('🌐 URL para Apify:', url);
 
       // Usar el endpoint síncrono que devuelve directamente los dataset items
       const results = await this.runActorSync({
         startUrls: [{ url: url }],
-        maxItems: limit * 3 // Buscar más items para tener mejores opciones
+        maxItems: limit * 3, // Buscar más items para tener mejores opciones
+        domainCode: "AR", // Argentina, no México
+        sortBy: "relevance"
       });
 
       // Procesar resultados
@@ -305,7 +307,44 @@ class ApifyService {
       };
     };
 
+    // Función para verificar si es un auto completo (no repuesto/accesorio)
+    const isCompleteVehicle = (title, subtitle) => {
+      const titleLower = title.toLowerCase();
+      const subtitleLower = subtitle ? subtitle.toLowerCase() : '';
+      
+      // Palabras que indican repuestos/accesorios
+      const partsKeywords = [
+        'repuesto', 'accesorio', 'faro', 'paragolpe', 'protector', 'emblema', 
+        'filtro', 'kit', 'moldura', 'tapa', 'baul', 'trasero', 'delantero',
+        'puerta', 'vidrio', 'espejo', 'neumatico', 'llanta', 'motor',
+        'bateria', 'aceite', 'frenos', 'amortiguador', 'radiador'
+      ];
+      
+      // Palabras que indican auto completo
+      const vehicleKeywords = [
+        'km', 'kilometros', 'año', 'automatica', 'manual', 'usado', 'nuevo',
+        'puertas', 'ptas', 'motor', 'cilindros', 'turbo', 'gasolina', 'nafta'
+      ];
+      
+      // Si contiene palabras de repuestos, probablemente no es un auto completo
+      const hasPartsKeywords = partsKeywords.some(keyword => 
+        titleLower.includes(keyword)
+      );
+      
+      // Si contiene palabras de vehículo completo, probablemente sí es un auto
+      const hasVehicleKeywords = vehicleKeywords.some(keyword => 
+        titleLower.includes(keyword) || subtitleLower.includes(keyword)
+      );
+      
+      // Es un auto si no tiene palabras de repuestos Y tiene palabras de vehículo
+      return !hasPartsKeywords && hasVehicleKeywords;
+    };
+
     const processedVehicles = results
+      .filter(item => {
+        // Filtrar solo autos completos, no repuestos
+        return isCompleteVehicle(item.title, item.subtitle);
+      })
       .map(item => {
         // Mapear los campos del resultado de Apify a nuestro formato
         const title = item.title || '';
