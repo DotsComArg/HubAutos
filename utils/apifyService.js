@@ -181,7 +181,7 @@ class ApifyService {
       };
 
       const runOptions = {
-        timeout: 45, // 45 segundos (menor que Vercel)
+        timeout: 60, // 60 segundos (mismo que Vercel)
         memory: 2048,
         ...options
       };
@@ -200,7 +200,7 @@ class ApifyService {
           headers: {
             'Content-Type': 'application/json'
           },
-          timeout: 45000 // 45 segundos timeout (menor que Vercel)
+          timeout: 60000 // 60 segundos timeout (mismo que Vercel)
         }
       );
 
