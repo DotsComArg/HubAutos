@@ -169,10 +169,14 @@ class ApifyService {
     try {
       console.log('🚀 Ejecutando Actor de Apify síncronamente...');
       
-      // Configuración por defecto
-      const defaultInput = {
+      // Configuración por defecto - NO agregar startUrls ni maxItems si se usa search
+      const defaultInput = input.search ? {
+        // Si usa search, no agregar startUrls ni maxItems
+        ...input
+      } : {
+        // Si usa startUrls, agregar defaults
         startUrls: [],
-        maxItems: 15, // Reducido para mayor velocidad
+        maxItems: 15,
         ...input
       };
 
@@ -254,7 +258,7 @@ class ApifyService {
       // Usar el endpoint síncrono con search directo (como funciona en Apify)
       const results = await this.runActorSync({
         search: searchQuery, // Usar search directo en lugar de startUrls
-        maxItemCount: limit * 3, // Buscar más items para tener mejores opciones
+        maxItemCount: 5, // Usar el mismo valor que funciona en Apify
         domainCode: "AR", // Argentina, no México
         sortBy: "relevance",
         debugMode: false,
