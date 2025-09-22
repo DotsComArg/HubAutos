@@ -172,12 +172,12 @@ class ApifyService {
       // Configuración por defecto
       const defaultInput = {
         startUrls: [],
-        maxItems: 50,
+        maxItems: 15, // Reducido para mayor velocidad
         ...input
       };
 
       const runOptions = {
-        timeout: 600, // 10 minutos
+        timeout: 45, // 45 segundos (menor que Vercel)
         memory: 2048,
         ...options
       };
@@ -196,7 +196,7 @@ class ApifyService {
           headers: {
             'Content-Type': 'application/json'
           },
-          timeout: 600000 // 10 minutos timeout
+          timeout: 45000 // 45 segundos timeout (menor que Vercel)
         }
       );
 
