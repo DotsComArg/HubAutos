@@ -257,6 +257,11 @@ class ApifyService {
         .replace(/[^\w\s]/g, '')  // Eliminar caracteres especiales pero mantener espacios
         .replace(/\s+/g, ' ')     // Normalizar espacios múltiples a uno solo
         .trim();                  // Eliminar espacios al inicio/final
+      
+      // Agregar el año al query si está disponible
+      if (yearParam) {
+        searchQuery = `${searchQuery} ${yearParam}`;
+      }
       const slug = searchQuery.replace(/\s+/g, '-');
       
       console.log('🔍 Query de búsqueda para Apify:', searchQuery);
