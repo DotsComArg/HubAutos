@@ -249,17 +249,20 @@ class ApifyService {
       const searchQuery = filteredWords.join(' ').toLowerCase();
       const slug = searchQuery.replace(/\s+/g, '-');
       
-      // Usar URL específica para autos y camionetas en Argentina
-      const url = `https://listado.mercadolibre.com.ar/autos-camionetas-${slug}`;
+      console.log('🔍 Query de búsqueda para Apify:', searchQuery);
 
-      console.log('🌐 URL para Apify:', url);
-
-      // Usar el endpoint síncrono que devuelve directamente los dataset items
+      // Usar el endpoint síncrono con search directo (como funciona en Apify)
       const results = await this.runActorSync({
-        startUrls: [{ url: url }],
-        maxItems: limit * 3, // Buscar más items para tener mejores opciones
+        search: searchQuery, // Usar search directo en lugar de startUrls
+        maxItemCount: limit * 3, // Buscar más items para tener mejores opciones
         domainCode: "AR", // Argentina, no México
-        sortBy: "relevance"
+        sortBy: "relevance",
+        debugMode: false,
+        fastMode: false,
+        proxy: {
+          useApifyProxy: true,
+          apifyProxyGroups: ["RESIDENTIAL"]
+        }
       });
 
       // Procesar resultados
@@ -269,7 +272,7 @@ class ApifyService {
         success: true,
         query: `${query} ${year}`,
         vehicles: processedResults,
-        url: url,
+        searchQuery: searchQuery,
         timestamp: new Date().toISOString(),
         source: 'apify'
       };
