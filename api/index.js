@@ -186,7 +186,35 @@ async function processKommoLead(data) {
 
     // TEMPORALMENTE DESACTIVADO - Apify y notas
     if (idLead) {
-      console.log("⏸️ Apify y cotización TEMPORALMENTE DESACTIVADOS para ajustes");
+      // Detectar número de prueba para activar Apify
+      const isTestNumber = data.phone === '3794556599';
+      
+      if (isTestNumber) {
+        console.log("🧪 Número de prueba detectado - Activando Apify y cotización");
+        // Ejecutar cotización en paralelo (no bloquear respuesta)
+        processQuote(mappedData)
+          .then(async (quoteResult) => {
+            if (quoteResult.success) {
+              console.log("✅ Cotización completada para número de prueba");
+              // Agregar nota con cotización
+              const bodyNote = [{
+                note_type: "common",
+                params: {
+                  text: `[Cotización Automática - TEST]\n\n${quoteResult.data.noteText}`
+                }
+              }];
+              await kommoApiClientWordpress.addNoteToLead(idLead, bodyNote);
+            } else {
+              console.log("❌ Error en cotización para número de prueba:", quoteResult.error);
+            }
+          })
+          .catch(error => {
+            console.error("❌ Error ejecutando cotización para número de prueba:", error);
+          });
+      } else {
+        console.log("⏸️ Apify y cotización TEMPORALMENTE DESACTIVADOS para ajustes");
+      }
+      
       console.log("✅ Lead creado/actualizado exitosamente:", idLead);
       
       // TODO: Reactivar cuando termines los ajustes del scraper

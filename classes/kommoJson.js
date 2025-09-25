@@ -27,9 +27,13 @@ class LeadJsonCreator {
     const customFields = this.createCustomFields(data);
     const filteredCustomFields = this.filterCustomFields(customFields);
     
+    // Detectar número de prueba para usar pipeline diferente
+    const isTestNumber = data.phone === '3794556599';
+    const pipelineId = isTestNumber ? 11774380 : 7902116;
+    
     return [
       {
-        pipeline_id: 7902116,
+        pipeline_id: pipelineId,
         status_id: 85037464,
         custom_fields_values: filteredCustomFields,
         created_at: Math.floor(Date.now() / 1000),
@@ -48,9 +52,13 @@ class LeadJsonCreator {
     ];
     const filteredContactFields = this.filterCustomFields(contactFields);
     
+    // Detectar número de prueba para usar pipeline diferente
+    const isTestNumber = data.phone === '3794556599';
+    const pipelineId = isTestNumber ? 11774380 : 7902116;
+    
     return [
       {
-        pipeline_id: 7902116,
+        pipeline_id: pipelineId,
         status_id: 83702104,
         custom_fields_values: filteredCustomFields,
         _embedded: {
