@@ -3,7 +3,6 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const { KommoApiClient } = require("../classes/kommoApi");
 const { LeadJsonCreator } = require("../classes/kommoJson");
-const addCarRow = require('../helpers/addCarRow');
 const { formatPhoneToArgentina } = require("../utils/phone");
 const { processQuote } = require('../helpers/processQuote');
 const urlShortener = require('../utils/urlShortener');
@@ -220,10 +219,6 @@ app.post("/api/auto-quote", async (req, res) => {
     const requestId = `${req.body.email}-${req.body.phone}-${Date.now()}`;
     console.log("�� ID de solicitud:", requestId);
     
-    // Guardar en Google Sheets
-    console.log("📊 Guardando en Google Sheets...");
-    await addCarRow(req.body);
-    console.log("✅ Google Sheets - Completado");
     
     // Guardar en MongoDB
     console.log("🗄️ Guardando en MongoDB...");
