@@ -24,15 +24,15 @@ async function getCheapestCar(query, year, limit = 1) {
     if (!query) return { error: 'Parametro query requerido' };
 
     /* 2. Usar solo Apify ----------------------------------------------- */
-    console.log('🚀 Ejecutando búsqueda con Apify Actor...');
+    console.log('Ejecutando búsqueda con Apify Actor...');
     
     const apifyResult = await apifyService.searchVehicles(query, year, limit);
     
     if (apifyResult.success) {
-      console.log('✅ Apify ejecutado correctamente');
+      console.log('Apify ejecutado correctamente');
       return apifyResult;
     } else {
-      console.log('❌ Apify falló:', apifyResult.error);
+      console.log('Apify falló:', apifyResult.error);
       return {
         error: `Error en Apify: ${apifyResult.error}`,
         query: `${query} ${year}`,
@@ -41,7 +41,7 @@ async function getCheapestCar(query, year, limit = 1) {
     }
 
   } catch (err) {
-    console.error('❌ Error crítico en getCheapestCar:', err);
+    console.error('Error crítico en getCheapestCar:', err);
     
     // Determinar el tipo de error específico de Apify
     let errorMessage = 'Error interno del servidor';

@@ -12,7 +12,7 @@ class ApifyService {
 
   async runActor(input, options = {}) {
     try {
-      console.log('🚀 Iniciando Actor de Apify...');
+      console.log('Iniciando Actor de Apify...');
       
       // Configuración por defecto
       const defaultInput = {
@@ -27,7 +27,7 @@ class ApifyService {
         ...options
       };
 
-      console.log('📋 Configuración del Actor:', {
+      console.log('Configuración del Actor:', {
         input: defaultInput,
         timeout: runOptions.timeout,
         memory: runOptions.memory
@@ -54,13 +54,13 @@ class ApifyService {
       }
 
       const runId = runResponse.data.data.id;
-      console.log(`📊 Run iniciado con ID: ${runId}`);
+      console.log(`Run iniciado con ID: ${runId}`);
 
       // Esperar a que termine el run
       return await this.waitForRunCompletion(runId);
 
     } catch (error) {
-      console.error('❌ Error ejecutando Actor de Apify:', error.response?.data || error.message);
+      console.error('Error ejecutando Actor de Apify:', error.response?.data || error.message);
       
       if (error.response?.status === 401) {
         throw new Error('Error de autenticación: API key de Apify inválida');
@@ -80,7 +80,7 @@ class ApifyService {
     const startTime = Date.now();
     let lastStatus = '';
     
-    console.log(`⏳ Esperando que termine el run ${runId}...`);
+    console.log(`Esperando que termine el run ${runId}...`);
     
     while (Date.now() - startTime < maxWaitTime) {
       try {
@@ -102,12 +102,12 @@ class ApifyService {
         
         // Solo loggear si el estado cambió
         if (status !== lastStatus) {
-          console.log(`⏳ Estado del run: ${status}`);
+          console.log(`Estado del run: ${status}`);
           lastStatus = status;
         }
 
         if (status === 'SUCCEEDED') {
-          console.log('✅ Run completado exitosamente');
+          console.log('Run completado exitosamente');
           return await this.getRunResults(runId);
         } else if (status === 'FAILED') {
           const errorMessage = statusResponse.data.data.stats?.errorMessages?.[0] || 'Error desconocido';
@@ -119,7 +119,7 @@ class ApifyService {
         } else if (status === 'RUNNING' || status === 'READY') {
           // Continuar esperando
         } else {
-          console.log(`⚠️ Estado inesperado: ${status}`);
+          console.log(`Estado inesperado: ${status}`);
         }
 
         // Esperar 15 segundos antes del siguiente check
@@ -129,11 +129,11 @@ class ApifyService {
         if (error.message.includes('Run falló') || error.message.includes('Run fue abortado') || error.message.includes('Run excedió')) {
           throw error; // Re-lanzar errores específicos del run
         }
-        console.error('❌ Error verificando estado del run:', error.message);
+        console.error('Error verificando estado del run:', error.message);
         
         // Si es un error de red, esperar un poco más y reintentar
         if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ECONNABORTED') {
-          console.log('🔄 Error de red, reintentando en 30 segundos...');
+          console.log('Error de red, reintentando en 30 segundos...');
           await new Promise(resolve => setTimeout(resolve, 30000));
           continue;
         }
@@ -156,18 +156,18 @@ class ApifyService {
         }
       );
 
-      console.log(`✅ Resultados obtenidos: ${resultsResponse.data.length} items`);
+      console.log(`Resultados obtenidos: ${resultsResponse.data.length} items`);
       return resultsResponse.data;
 
     } catch (error) {
-      console.error('❌ Error obteniendo resultados:', error.response?.data || error.message);
+      console.error('Error obteniendo resultados:', error.response?.data || error.message);
       throw error;
     }
   }
 
   async runActorSync(input, options = {}) {
     try {
-      console.log('🚀 Ejecutando Actor de Apify síncronamente...');
+      console.log('Ejecutando Actor de Apify síncronamente...');
       
       // Configuración por defecto - NO agregar startUrls ni maxItems si se usa search
       const defaultInput = input.search ? {
@@ -186,7 +186,7 @@ class ApifyService {
         ...options
       };
 
-      console.log('📋 Configuración del Actor:', {
+      console.log('Configuración del Actor:', {
         input: defaultInput,
         timeout: runOptions.timeout,
         memory: runOptions.memory
@@ -204,11 +204,11 @@ class ApifyService {
         }
       );
 
-      console.log(`✅ Actor ejecutado síncronamente: ${response.data.length} items`);
+      console.log(`Actor ejecutado síncronamente: ${response.data.length} items`);
       return response.data;
 
     } catch (error) {
-      console.error('❌ Error ejecutando Actor síncrono:', error.response?.data || error.message);
+      console.error('Error ejecutando Actor síncrono:', error.response?.data || error.message);
       
       if (error.response?.status === 401) {
         throw new Error('Error de autenticación: API key de Apify inválida');
@@ -264,7 +264,7 @@ class ApifyService {
       }
       const slug = searchQuery.replace(/\s+/g, '-');
       
-      console.log('🔍 Query de búsqueda para Apify:', searchQuery);
+      console.log('Query de búsqueda para Apify:', searchQuery);
 
       // Construir input EXACTO como en la web de Apify
       const apifyInput = {
@@ -299,7 +299,7 @@ class ApifyService {
       };
 
     } catch (error) {
-      console.error('❌ Error en searchVehicles de Apify:', error.message);
+      console.error('Error en searchVehicles de Apify:', error.message);
       return {
         error: 'Error en el scraper de Apify',
         details: error.message,
@@ -365,16 +365,16 @@ class ApifyService {
       return !hasPartsKeywords; // Solo filtrar repuestos, no exigir palabras de vehículo
     };
 
-    console.log(`📊 Total resultados de Apify: ${results.length}`);
+    console.log(`Total resultados de Apify: ${results.length}`);
     
     const processedVehicles = results
       .filter(item => {
         // Filtrar solo autos completos, no repuestos
         const isVehicle = isCompleteVehicle(item.title, item.subtitle);
         if (!isVehicle) {
-          console.log(`🚫 Filtrado (repuesto): ${item.title}`);
+          console.log(`Filtrado (repuesto): ${item.title}`);
         } else {
-          console.log(`✅ Aceptado (auto): ${item.title}`);
+          console.log(`Aceptado (auto): ${item.title}`);
         }
         return isVehicle;
       })
