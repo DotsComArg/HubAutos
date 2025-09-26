@@ -401,7 +401,20 @@ class ApifyService {
           validated
         };
       })
-      .filter(vehicle => vehicle.title && vehicle.price)
+      .filter(vehicle => {
+        // Filtrar vehículos con título y precio válidos
+        if (!vehicle.title || !vehicle.price) {
+          return false;
+        }
+        
+        // Filtrar precios menores a 2 millones de pesos (evitar repuestos)
+        if (vehicle.price < 2000000) {
+          console.log(`Filtrado (precio muy bajo): ${vehicle.title} - $${vehicle.price}`);
+          return false;
+        }
+        
+        return true;
+      })
       .sort((a, b) => a.price - b.price)
       .slice(0, limit);
 
