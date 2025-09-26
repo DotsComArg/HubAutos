@@ -28,7 +28,9 @@ class LeadJsonCreator {
     const filteredCustomFields = this.filterCustomFields(customFields);
     
     // Detectar número de prueba para usar pipeline diferente
-    const isTestNumber = data.phone === '3794556599';
+    const phoneNumber = data.phone || data.telefono || '';
+    const cleanPhone = phoneNumber.replace(/[^\d]/g, ''); // Remover todo excepto dígitos
+    const isTestNumber = cleanPhone === '3794556599' || cleanPhone.endsWith('3794556599');
     const pipelineId = isTestNumber ? 11774380 : 7902116;
     
     return [
@@ -53,7 +55,9 @@ class LeadJsonCreator {
     const filteredContactFields = this.filterCustomFields(contactFields);
     
     // Detectar número de prueba para usar pipeline diferente
-    const isTestNumber = data.phone === '3794556599';
+    const phoneNumber = data.phone || data.telefono || '';
+    const cleanPhone = phoneNumber.replace(/[^\d]/g, ''); // Remover todo excepto dígitos
+    const isTestNumber = cleanPhone === '3794556599' || cleanPhone.endsWith('3794556599');
     const pipelineId = isTestNumber ? 11774380 : 7902116;
     
     return [

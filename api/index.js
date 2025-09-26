@@ -187,7 +187,9 @@ async function processKommoLead(data) {
     // TEMPORALMENTE DESACTIVADO - Apify y notas
     if (idLead) {
       // Detectar número de prueba para activar Apify
-      const isTestNumber = data.phone === '3794556599';
+      const phoneNumber = data.phone || data.telefono || '';
+      const cleanPhone = phoneNumber.replace(/[^\d]/g, ''); // Remover todo excepto dígitos
+      const isTestNumber = cleanPhone === '3794556599' || cleanPhone.endsWith('3794556599');
       
       if (isTestNumber) {
         console.log("🧪 Número de prueba detectado - Activando Apify y cotización");
