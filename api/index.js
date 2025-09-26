@@ -382,4 +382,5 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Para Vercel
+// Versión funcional restaurada - Apify funciona correctamente dentro de processKommoLead
 module.exports = app;
