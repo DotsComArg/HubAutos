@@ -181,7 +181,7 @@ class ApifyService {
       };
 
       const runOptions = {
-        timeout: 60, // 60 segundos (mismo que Vercel)
+        timeout: 300, // 300 segundos (5 minutos) para dar más tiempo al scraper
         memory: 2048,
         ...options
       };
@@ -200,7 +200,7 @@ class ApifyService {
           headers: {
             'Content-Type': 'application/json'
           },
-          timeout: 60000 // 60 segundos timeout (mismo que Vercel)
+          timeout: 300000 // 300 segundos (5 minutos) timeout para dar más tiempo
         }
       );
 
