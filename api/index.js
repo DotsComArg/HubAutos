@@ -184,49 +184,9 @@ async function processKommoLead(data) {
       console.log(`✅ Contacto y lead ${idLead} creados desde cero`);
     }
 
-    // TEMPORALMENTE DESACTIVADO - Apify y notas
+    // Apify ahora se ejecuta al inicio del endpoint en paralelo
     if (idLead) {
-      // Detectar número de prueba para activar Apify
-      const phoneNumber = data.phone || data.telefono || '';
-      const cleanPhone = phoneNumber.replace(/[^\d]/g, ''); // Remover todo excepto dígitos
-      const isTestNumber = cleanPhone === '3794556599' || cleanPhone.endsWith('3794556599');
-      
-      if (isTestNumber) {
-        console.log("🧪 Número de prueba detectado - Activando Apify y cotización");
-        // Ejecutar cotización en paralelo (no bloquear respuesta)
-        processQuote(mappedData)
-          .then(async (quoteResult) => {
-            if (quoteResult.success) {
-              console.log("✅ Cotización completada para número de prueba");
-              // Agregar nota con cotización
-              const bodyNote = [{
-                note_type: "common",
-                params: {
-                  text: `[Cotización Automática - TEST]\n\n${quoteResult.data.cotizacion.listFormatted}`
-                }
-              }];
-              await kommoApiClientWordpress.addNoteToLead(idLead, bodyNote);
-            } else {
-              console.log("❌ Error en cotización para número de prueba:", quoteResult.error);
-            }
-          })
-          .catch(error => {
-            console.error("❌ Error ejecutando cotización para número de prueba:", error);
-          });
-      } else {
-        console.log("⏸️ Apify y cotización TEMPORALMENTE DESACTIVADOS para ajustes");
-      }
-      
       console.log("✅ Lead creado/actualizado exitosamente:", idLead);
-      
-      // TODO: Reactivar cuando termines los ajustes del scraper
-      /*
-      // Ejecutar cotización en paralelo (no bloquear respuesta)
-      processQuote(mappedData)
-        .then(async (quoteResult) => {
-          // ... código de cotización comentado temporalmente
-        });
-      */
     }
 
     return idLead;
@@ -249,6 +209,31 @@ app.post("/api/auto-quote", async (req, res) => {
     const requestId = `${req.body.email}-${req.body.phone}-${Date.now()}`;
     console.log("�� ID de solicitud:", requestId);
     
+    // Detectar número de prueba para activar Apify INMEDIATAMENTE
+    const phoneNumber = req.body.phone || req.body.telefono || '';
+    const cleanPhone = phoneNumber.replace(/[^\d]/g, ''); // Remover todo excepto dígitos
+    const isTestNumber = cleanPhone === '3794556599' || cleanPhone.endsWith('3794556599');
+    
+    let apifyPromise = null;
+    if (isTestNumber) {
+      console.log("🧪 Número de prueba detectado - Activando Apify INMEDIATAMENTE en paralelo");
+      const mappedData = mapInputData(req.body);
+      // Iniciar Apify en paralelo sin esperar
+      apifyPromise = processQuote(mappedData)
+        .then(async (quoteResult) => {
+          if (quoteResult.success) {
+            console.log("✅ Cotización completada para número de prueba");
+            return quoteResult;
+          } else {
+            console.log("❌ Error en cotización para número de prueba:", quoteResult.error);
+            return null;
+          }
+        })
+        .catch(error => {
+          console.error("❌ Error ejecutando cotización para número de prueba:", error);
+          return null;
+        });
+    }
     
     // Guardar en MongoDB
     console.log("🗄️ Guardando en MongoDB...");
@@ -260,6 +245,31 @@ app.post("/api/auto-quote", async (req, res) => {
     console.log("📋 Procesando en Kommo CRM...");
     const leadId = await processKommoLead(req.body);
     console.log("✅ Kommo CRM - Completado, Lead ID:", leadId);
+    
+    // Si Apify se ejecutó en paralelo, agregar la nota al lead
+    if (apifyPromise && leadId) {
+      apifyPromise.then(async (quoteResult) => {
+        if (quoteResult) {
+          try {
+            const kommoApiClientWordpress = new KommoApiClient(
+              process.env.SUBDOMAIN_KOMMO,
+              process.env.TOKEN_KOMMO_FORM
+            );
+            // Agregar nota con cotización
+            const bodyNote = [{
+              note_type: "common",
+              params: {
+                text: `[Cotización Automática - TEST]\n\n${quoteResult.data.cotizacion.listFormatted}`
+              }
+            }];
+            await kommoApiClientWordpress.addNoteToLead(leadId, bodyNote);
+            console.log("✅ Nota de cotización agregada al lead:", leadId);
+          } catch (error) {
+            console.error("❌ Error agregando nota de cotización:", error);
+          }
+        }
+      });
+    }
     
     console.log("🎉 Procesamiento completado exitosamente");
     
