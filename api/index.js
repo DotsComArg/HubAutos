@@ -221,11 +221,13 @@ app.post("/api/auto-quote", async (req, res) => {
       // Iniciar Apify en paralelo sin esperar
       apifyPromise = processQuote(mappedData)
         .then(async (quoteResult) => {
-          if (quoteResult.success) {
+          console.log("🔍 Apify terminó, procesando resultado...");
+          if (quoteResult && quoteResult.success) {
             console.log("✅ Cotización completada para número de prueba");
+            console.log("📊 Datos de cotización:", JSON.stringify(quoteResult.data, null, 2));
             return quoteResult;
           } else {
-            console.log("❌ Error en cotización para número de prueba:", quoteResult.error);
+            console.log("❌ Error en cotización para número de prueba:", quoteResult ? quoteResult.error : "Resultado nulo");
             return null;
           }
         })
@@ -248,9 +250,12 @@ app.post("/api/auto-quote", async (req, res) => {
     
     // Si Apify se ejecutó en paralelo, agregar la nota al lead
     if (apifyPromise && leadId) {
+      console.log("🔄 Esperando que termine Apify para agregar nota al lead:", leadId);
       apifyPromise.then(async (quoteResult) => {
+        console.log("📊 Resultado de Apify recibido:", quoteResult ? "Éxito" : "Error");
         if (quoteResult) {
           try {
+            console.log("📝 Agregando nota de cotización al lead:", leadId);
             const kommoApiClientWordpress = new KommoApiClient(
               process.env.SUBDOMAIN_KOMMO,
               process.env.TOKEN_KOMMO_FORM
@@ -267,7 +272,11 @@ app.post("/api/auto-quote", async (req, res) => {
           } catch (error) {
             console.error("❌ Error agregando nota de cotización:", error);
           }
+        } else {
+          console.log("⚠️ No se pudo obtener cotización de Apify");
         }
+      }).catch(error => {
+        console.error("❌ Error en promesa de Apify:", error);
       });
     }
     
