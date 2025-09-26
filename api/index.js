@@ -209,51 +209,44 @@ app.post("/api/auto-quote", async (req, res) => {
     const requestId = `${req.body.email}-${req.body.phone}-${Date.now()}`;
     console.log("�� ID de solicitud:", requestId);
     
-    // Detectar número de prueba para activar Apify INMEDIATAMENTE
-    const phoneNumber = req.body.phone || req.body.telefono || '';
-    const cleanPhone = phoneNumber.replace(/[^\d]/g, ''); // Remover todo excepto dígitos
-    const isTestNumber = cleanPhone === '3794556599' || cleanPhone.endsWith('3794556599');
-    
-    let apifyPromise = null;
-    if (isTestNumber) {
-      console.log("Número de prueba detectado - Activando Apify INMEDIATAMENTE en paralelo");
-      const mappedData = mapInputData(req.body);
-      // Iniciar Apify en paralelo sin esperar
-      apifyPromise = processQuote(mappedData)
-        .then(async (quoteResult) => {
-          console.log("Apify terminó, procesando resultado...");
-          if (quoteResult && quoteResult.success) {
-            console.log("Cotización completada para número de prueba");
-            console.log("Datos de cotización:", JSON.stringify(quoteResult.data, null, 2));
-            return quoteResult;
-          } else {
-            console.log("Error en cotización para número de prueba:", quoteResult ? quoteResult.error : "Resultado nulo");
-            // Devolver un resultado de error para que se cree la nota
-            return {
-              success: false,
-              error: quoteResult ? quoteResult.error : "Error desconocido",
-              data: {
-                cotizacion: {
-                  listFormatted: "❌ No se pudieron obtener cotizaciones automáticas.\n\nError: " + (quoteResult ? quoteResult.error : "Error desconocido")
-                }
-              }
-            };
-          }
-        })
-        .catch(error => {
-          console.error("Error ejecutando cotización para número de prueba:", error);
+    // Activar Apify INMEDIATAMENTE en paralelo para todas las consultas
+    console.log("Activando Apify INMEDIATAMENTE en paralelo para todas las consultas");
+    const mappedData = mapInputData(req.body);
+    // Iniciar Apify en paralelo sin esperar
+    const apifyPromise = processQuote(mappedData)
+      .then(async (quoteResult) => {
+        console.log("Apify terminó, procesando resultado...");
+        if (quoteResult && quoteResult.success) {
+          console.log("Cotización completada");
+          console.log("Datos de cotización:", JSON.stringify(quoteResult.data, null, 2));
+          return quoteResult;
+        } else {
+          console.log("Error en cotización:", quoteResult ? quoteResult.error : "Resultado nulo");
           // Devolver un resultado de error para que se cree la nota
           return {
             success: false,
-            error: error.message,
+            error: quoteResult ? quoteResult.error : "Error desconocido",
             data: {
               cotizacion: {
-                listFormatted: "❌ Error en el proceso de cotización automática.\n\nError: " + error.message
+                listFormatted: " No se pudieron obtener cotizaciones automáticas.\n\nError: " + (quoteResult ? quoteResult.error : "Error desconocido")
               }
             }
           };
-        });
-    }
+        }
+      })
+      .catch(error => {
+        console.error("Error ejecutando cotización:", error);
+        // Devolver un resultado de error para que se cree la nota
+        return {
+          success: false,
+          error: error.message,
+          data: {
+            cotizacion: {
+              listFormatted: " Error en el proceso de cotización automática.\n\nError: " + error.message
+            }
+          }
+        };
+      });
     
     // Guardar en MongoDB
     console.log("Guardando en MongoDB...");
@@ -266,7 +259,7 @@ app.post("/api/auto-quote", async (req, res) => {
     const leadId = await processKommoLead(req.body);
     console.log("Kommo CRM - Completado, Lead ID:", leadId);
     
-    // Si Apify se ejecutó en paralelo, agregar la nota al lead
+    // Agregar la nota al lead cuando termine Apify
     if (apifyPromise && leadId) {
       console.log("Esperando que termine Apify para agregar nota al lead:", leadId);
       apifyPromise.then(async (quoteResult) => {
@@ -280,7 +273,7 @@ app.post("/api/auto-quote", async (req, res) => {
             );
             
             // Determinar el tipo de nota según el resultado
-            const noteTitle = quoteResult.success ? "[Cotización Automática - TEST]" : "[Error en Cotización Automática - TEST]";
+            const noteTitle = quoteResult.success ? "[Cotización Automática]" : "[Error en Cotización Automática]";
             
             // Agregar nota con cotización o error
             const bodyNote = [{
@@ -312,7 +305,7 @@ app.post("/api/auto-quote", async (req, res) => {
       requestId: requestId
     });
   } catch (error) {
-    console.error("❌ Error al procesar la solicitud:", error);
+    console.error(" Error al procesar la solicitud:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
@@ -377,7 +370,7 @@ app.post("/api/process-quote", async (req, res) => {
       const errorNote = [{
         note_type: "common",
         params: {
-          text: `[Error en Cotización Manual]\n\n❌ ${quoteResult.error}\n\nNo se pudieron obtener cotizaciones automáticas.`
+          text: `[Error en Cotización Manual]\n\n ${quoteResult.error}\n\nNo se pudieron obtener cotizaciones automáticas.`
         }
       }];
       await kommoApiClientWordpress.addNoteToLead(leadId, errorNote);
@@ -389,7 +382,7 @@ app.post("/api/process-quote", async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("❌ Error al procesar cotización manual:", error);
+    console.error(" Error al procesar cotización manual:", error);
     res.status(500).json({ 
       success: false,
       error: "Error interno del servidor",
