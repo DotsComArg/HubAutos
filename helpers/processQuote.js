@@ -16,22 +16,27 @@ async function generateSimpleList(items) {
     throw new RangeError("El array debe tener entre 1 y 10 autos");
   }
 
-  // Mapear cada ítem y acortar URL
-  const detalles = await Promise.all(
-    items.map(async item => {
-      const { price, currency, title, link, image, year, km, location, validated } = item;
-      if (typeof price !== "number" && typeof price !== "string") {
-        throw new TypeError(`price inválido en "${title}"`);
-      }
-      const tiny = await urlShortener.shortenUrl(link);
+  // Mapear cada ítem sin acortar URL (usar links directos)
+  const detalles = items.map(item => {
+    const { price, currency, title, link, image, year, km, location, validated } = item;
+    if (typeof price !== "number" && typeof price !== "string") {
+      throw new TypeError(`price inválido en "${title}"`);
+    }
 
-      return { ...item, tiny };
-    })
-  );
+    return { ...item };
+  });
 
   // Seleccionar hasta 3 autos más baratos
   const sorted = [...detalles].sort((a, b) => parseInt(a.price) - parseInt(b.price));
   const seleccionados = sorted.slice(0, 3);
+
+  // Calcular cotización estimada (promedio de los 3 precios menos 14%)
+  const precios = seleccionados.map(a => parseInt(a.price)).filter(price => !isNaN(price));
+  let cotizacionEstimada = null;
+  if (precios.length > 0) {
+    const promedio = precios.reduce((sum, price) => sum + price, 0) / precios.length;
+    cotizacionEstimada = Math.round(promedio * 0.86); // Reducir 14%
+  }
 
   // Formatear la lista de salida con formato completo
   const lines = seleccionados.map(a => {
@@ -42,14 +47,25 @@ async function generateSimpleList(items) {
       a.year,
       a.km ? `${a.km} Km` : '',
       a.location || '',
-      `${URL_BASE}/sh/${a.tiny}`
+      a.link // Usar link directo en lugar de acortado
     ];
     return parts.filter(Boolean).join(" | ");
   });
 
+  // Agregar cotización estimada al final
+  let listFormatted = lines.join("\n");
+  if (cotizacionEstimada) {
+    const currency = seleccionados[0]?.currency === "US$" ? "US$" : "$";
+    const formattedPrice = currency === "US$" 
+      ? `US$${cotizacionEstimada.toLocaleString('en-US')}` 
+      : `$${cotizacionEstimada.toLocaleString('es-AR')}`;
+    listFormatted += `\n\nCotización recomendada: ${formattedPrice}`;
+  }
+
   return {
-    listFormatted: lines.join("\n"),
-    autos: seleccionados
+    listFormatted,
+    autos: seleccionados,
+    cotizacionEstimada
   };
 }
 
