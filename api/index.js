@@ -202,7 +202,7 @@ async function processKommoLead(data) {
               const bodyNote = [{
                 note_type: "common",
                 params: {
-                  text: `[Cotización Automática - TEST]\n\n${quoteResult.data.noteText}`
+                  text: `[Cotización Automática - TEST]\n\n${quoteResult.data.cotizacion.listFormatted}`
                 }
               }];
               await kommoApiClientWordpress.addNoteToLead(idLead, bodyNote);
