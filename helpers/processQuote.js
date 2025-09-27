@@ -30,12 +30,23 @@ async function generateSimpleList(items) {
   const sorted = [...detalles].sort((a, b) => parseInt(a.price) - parseInt(b.price));
   const seleccionados = sorted.slice(0, 3);
 
-  // Calcular cotización estimada (promedio de los 3 precios menos 14%)
+  // Calcular cotización estimada (promedio de los 3 precios menos 13-18% aleatorio)
   const precios = seleccionados.map(a => parseInt(a.price)).filter(price => !isNaN(price));
   let cotizacionEstimada = null;
+  let cotizacionMinima = null;
+  let cotizacionMaxima = null;
   if (precios.length > 0) {
     const promedio = precios.reduce((sum, price) => sum + price, 0) / precios.length;
-    cotizacionEstimada = Math.round(promedio * 0.86); // Reducir 14%
+    // Generar porcentaje aleatorio entre 13% y 18%
+    const porcentajeDescuento = Math.random() * (18 - 13) + 13; // Entre 13 y 18
+    const factorDescuento = 1 - (porcentajeDescuento / 100);
+    cotizacionEstimada = Math.round(promedio * factorDescuento);
+    
+    // Calcular rango mínimo y máximo
+    const factorMinimo = 1 - (18 / 100); // 18% descuento
+    const factorMaximo = 1 - (13 / 100); // 13% descuento
+    cotizacionMinima = Math.round(promedio * factorMinimo);
+    cotizacionMaxima = Math.round(promedio * factorMaximo);
   }
 
   // Formatear la lista de salida con formato completo
@@ -54,18 +65,23 @@ async function generateSimpleList(items) {
 
   // Agregar cotización estimada al final
   let listFormatted = lines.join("\n");
-  if (cotizacionEstimada) {
+  if (cotizacionEstimada && cotizacionMinima && cotizacionMaxima) {
     const currency = seleccionados[0]?.currency === "US$" ? "US$" : "$";
-    const formattedPrice = currency === "US$" 
-      ? `US$${cotizacionEstimada.toLocaleString('en-US')}` 
-      : `$${cotizacionEstimada.toLocaleString('es-AR')}`;
-    listFormatted += `\n\nCotización recomendada: ${formattedPrice}`;
+    const formattedMin = currency === "US$" 
+      ? `US$${cotizacionMinima.toLocaleString('en-US')}` 
+      : `$${cotizacionMinima.toLocaleString('es-AR')}`;
+    const formattedMax = currency === "US$" 
+      ? `US$${cotizacionMaxima.toLocaleString('en-US')}` 
+      : `$${cotizacionMaxima.toLocaleString('es-AR')}`;
+    listFormatted += `\n\nLa cotización estimada puede ir desde ${formattedMin} hasta ${formattedMax}`;
   }
 
   return {
     listFormatted,
     autos: seleccionados,
-    cotizacionEstimada
+    cotizacionEstimada,
+    cotizacionMinima,
+    cotizacionMaxima
   };
 }
 
